@@ -35,8 +35,13 @@ func loadPage(title string) (*Page, error) {
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", "Kalle", "Anka")
 }
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", "Kalle/ROOT", "Anka")
+}
+
 
 func main() {
-	http.HandleFunc("/", viewHandler)
+	http.HandleFunc("/root/", rootHandler)
+	http.HandleFunc("/view/", viewHandler)
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
