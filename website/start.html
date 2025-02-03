@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Book Shop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="stylesheat.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+
+<div id="center">
+
+<div class="topnav">
+    <a class="active" href="#home">Book Store</a>
+</div>
+
+<div class="flex-container">
+    <form action="/search">
+        <input id="search" type="text" placeholder=" Search book">
+        <!-- <button type="submit"><i class="fa fa-search"></i></button> -->
+    </form>
+</div>
+
+
+<div class="flex-container"> 
+    <!-- <div id="book">
+        <div class="card">
+            <div class="container">
+                <h4><b>Book</b></h4>
+            </div>
+        </div> 
+    </div>   -->
+
+    <div class="row">
+        <div id="books"></div>
+    </div>
+
+</div> 
+
+<a href="start/seller.html">seller</a>
+
+</div>
+
+<script>
+var books = [
+    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+];
+
+$.each(books, function (i) {
+    if (i % 4 === 0) {
+        $('#books').append('<div class="row"></div>'); 
+    }
+
+    var templateBook = '<div id="book"><div class="card" id="showCard"><div class?"container"><h4><b>' + books[i].Title + '</b></h4></div></div></div>';
+    $('#books').append(templateBook);
+})
+
+const button = document.getElementById("showCard");
+const form = document.getElementById("addbook");
+
+button.addEventListener("click", function() {
+    if (form.style.display === "none" || form.style.display === "") {
+        form.style.display = "block";
+        button.textContent = "Back";
+    } else {
+        form.style.display = "none";
+        button.textContent = "Add book";
+    }
+})
+
+</script>
+
+</body>
+</html
+
