@@ -9,7 +9,7 @@ package main
 import (
         "fmt"
         "encoding/json"
-	"database/sql"
+	        "database/sql"
         "log"
         "net/http"
         "os"
@@ -127,9 +127,13 @@ func main() {
     }
     fmt.Printf("Albums found: %v\n", albums)
     http.HandleFunc("/view/", viewHandler)
+    fmt.Println("a!")
     http.HandleFunc("/root/", rootHandler)
+    fmt.Println("b!")
     http.HandleFunc("/send", sendHandler)
+    fmt.Println("c!")
     log.Fatal(http.ListenAndServe(":80", nil))
+    fmt.Println("Server uppe!")
 }
 
 // albumsByArtist queries for albums that have the specified artist name.
