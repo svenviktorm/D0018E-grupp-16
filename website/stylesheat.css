@@ -17,6 +17,32 @@
     background-color: rgb(202, 202, 202);
 }
 
+#userbtn {
+    color: white;
+}
+
+input:hover {
+    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+    background-color: rgb(202, 202, 202);
+}
+
+a {
+    color: white;
+    margin-left: 13px;
+    padding-top: 13px;
+}
+
+.center {
+    margin: auto;
+    width: 50%;
+    border: 3px solid green;
+    padding: 10px;
+}
+
+input {
+    margin-bottom: 8px;
+}
+
 #book {
     margin: 5px;
     /* margin-left: 20px; */
@@ -29,6 +55,7 @@
     width: 230px;
     align-items: center;
 }
+
 
 .image {
     padding: 15px;
@@ -64,4 +91,9 @@ h4 {
 
 #addbook {
     display: none;
+    border-radius: 15px;
+    border: 2px solid rgb(177, 177, 177);
+    width: 180px;
+    height: 250px;
+    align-content: center;
 }

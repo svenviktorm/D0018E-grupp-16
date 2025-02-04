@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <title>Book Shop</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="stylesheat.css">
@@ -10,6 +10,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
 </head>
 
 <body>
@@ -17,16 +18,19 @@
 <div id="center">
 
 <div class="topnav">
-    <a class="active" href="#home">Book Store</a>
+    <a class="active" href="start/../start.html">Book Store</a>
+    <a id="userbtn" href="start/seller.html"><i class="fas fa-user-alt"></i></a>
 </div>
 
 <div class="flex-container">
-    <form action="/search">
-        <input id="search" type="text" placeholder=" Search book">
-        <!-- <button type="submit"><i class="fa fa-search"></i></button> -->
+    <form>
+        <!--<input id="inputField" type="text" placeholder=" Search book">
+        <button onclick="sendText()" type="submit">search</button> -->
+
     </form>
 </div>
-
+ <input type="text" id="inputField" placeholder="Enter text here">
+    <button onclick="sendText()">Send</button>
 
 <div class="flex-container"> 
     <!-- <div id="book">

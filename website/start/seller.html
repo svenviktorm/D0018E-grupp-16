@@ -10,32 +10,40 @@
 
 <body>
 
+<div class="topnav">
+    <a class="active" href="../start.html">Book Store</a>
+</div>
+
 <button id="showform">Add book</button>
 
-<div id="addbook">
-    <card>
-        <form action="/action_page.php">
-            <input type="text" placeholder="Title" id="title"><br>
-            <input type="text" placeholder="Author" id="author"><br>
-            <input type="text" placeholder="Description" id="description"><br>
-            <input type="text" placeholder="Year" id="year"><br>
-            <input type="text" placeholder="Price" id="price"><br>
-            <input type="text" placeholder="Edition" id="edition"><br>
-            <label for="cathegory">Cathegory</label>
-            <select name="cathegory" id="cathegory" aria-placeholder="Cathegory">
-                <option value="literature">Literature</option>
-                <option value="fantasy">Fantasy</option>
-                <option value="nature">Nature</option>
-            </select><br>
-            <input type="submit" value="Submit" onclick="submitBooks();">
-            <!-- <input type="radio" name="Cathegory" id="literature" value="literature">
-            <label for="literature"></label>Literature<br>
-            <input type="radio" name="Cathegory" id="fantasy" value="fantasy">
-            <label for="fantasy"></label>Fantasy<br>
-            <input type="radio" name="Cathegory" id="nature" value="nature">
-            <label for="nature"></label>Nature<br> -->
-        </form>
-    </card>
+<div class="flex-container">
+    <div id="addbook">
+        <card>
+            <div class="flex-container">
+                <form action="/action_page.php">
+                    <input type="text" placeholder="Title" id="title"><br>
+                    <input type="text" placeholder="Author" id="author"><br>
+                    <input type="text" placeholder="Description" id="description"><br>
+                    <input type="text" placeholder="Year" id="year"><br>
+                    <input type="text" placeholder="Price" id="price"><br>
+                    <input type="text" placeholder="Edition" id="edition"><br>
+                    <label for="cathegory">Cathegory</label>
+                    <select name="cathegory" id="cathegory" aria-placeholder="Cathegory">
+                        <option value="literature">Literature</option>
+                        <option value="fantasy">Fantasy</option>
+                        <option value="nature">Nature</option>
+                    </select><br>
+                    <input type="submit" value="Submit" onclick="submitBooks();">
+                    <!-- <input type="radio" name="Cathegory" id="literature" value="literature">
+                    <label for="literature"></label>Literature<br>
+                    <input type="radio" name="Cathegory" id="fantasy" value="fantasy">
+                    <label for="fantasy"></label>Fantasy<br>
+                    <input type="radio" name="Cathegory" id="nature" value="nature">
+                    <label for="nature"></label>Nature<br> -->
+                </form>
+            </div>
+        </card>
+    </div>
 </div>
 
     
@@ -47,16 +55,11 @@
 
 function submitBooks() {
 
-
-    var value = localStorage.getItem('myValue');
-
-    var output = document.getElementById('value-output');
-    output.innerText = value;
 }
 
-$('#submitBooks').click( function() {
-    Object.assign(books, { "Title": document.getElementById("title"), "Description": document.getElementById("description"), "Author": document.getElementById("author"), "Year": document.getElementById("year"), "BookID": "123", "Price": document.getElementById("price"), "Rating": "abc", "Edition": document.getElementById("edition"), "Cathegory": "abc", "Stock": "123" });
-});
+//$('#submitBooks').click( function() {
+ //   Object.assign(books, { "Title": document.getElementById("title"), "Description": document.getElementById("description"), "Author": document.getElementById("author"), "Year": document.getElementById("year"), "BookID": "123", "Price": document.getElementById("price"), "Rating": "abc", "Edition": document.getElementById("edition"), "Cathegory": "abc", "Stock": "123" });
+//});
 
 const button = document.getElementById("showform");
 const form = document.getElementById("addbook");
@@ -70,10 +73,6 @@ button.addEventListener("click", function() {
         button.textContent = "Add book";
     }
 })
-
-
-
-
 
 </script>
 
