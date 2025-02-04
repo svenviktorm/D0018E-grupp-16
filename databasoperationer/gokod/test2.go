@@ -17,7 +17,7 @@ func main() {
 		//or replace them with the appropriate user name and password here.
 		//(I had trouble getting it to work with setting them in the command window)
 		//(not sure how we want to do this in the end?)
-		Passwd:               "AnkaAnka",
+		Passwd:               "password",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",
