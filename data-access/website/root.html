@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go Backend Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        #output {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Send Text to Go Backend</h2>
+    <input type="text" id="inputField" placeholder="Enter text here">
+    <button onclick="sendText()">Send</button>
+
+    <div id="output"></div>
+
+    <script>
+        function sendText() {
+            var inputValue = document.getElementById("inputField").value;
+
+            fetch("/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: inputValue }) // Send JSON data
+            })
+            .then(response => response.json()) // Parse JSON response
+            .then(data => {
+                document.getElementById("output").innerText = "Response: " + data.response;
+            })
+            .catch(error => console.error("Error:", error));
+        }
+    </script>
+
+</body>
+</html>
