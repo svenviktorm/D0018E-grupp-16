@@ -7,12 +7,12 @@
 package main
 
 import (
-        "fmt"
-        "encoding/json"
-	    "database/sql"
-        "log"
-        "net/http"
-        "os"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -27,29 +27,29 @@ type ResponseData struct {
 }
 
 type Page struct {
-        Title string
-        Body  []byte
+	Title string
+	Body  []byte
 }
 
 func (p *Page) save() error {
-        filename := p.Title + ".txt"
-        return os.WriteFile(filename, p.Body, 0600)
+	filename := p.Title + ".txt"
+	return os.WriteFile(filename, p.Body, 0600)
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
-    requestPath := r.URL.Path
-    fmt.Println(requestPath)
-    if requestPath == "/" {
-        http.ServeFile(w, r, "start.html")
-    } else {
-        requestPath = requestPath[1:]
-        requestPath = "website/"+requestPath
-        http.ServeFile(w, r, requestPath)
-    }
-    
+	requestPath := r.URL.Path
+	fmt.Println(requestPath)
+	if requestPath == "/" {
+		http.ServeFile(w, r, "start.html")
+	} else {
+		requestPath = requestPath[1:]
+		requestPath = "website/" + requestPath
+		http.ServeFile(w, r, requestPath)
+	}
+
 }
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-    http.ServeFile(w, r, "html.html")
+	http.ServeFile(w, r, "html.html")
 }
 
 func sendHandler(w http.ResponseWriter, r *http.Request) {
@@ -67,54 +67,64 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Process the input text (modify response as needed)
 	responseText := fmt.Sprintf("You sent: %s", requestData.Text)
-    fmt.Println(responseText)
+	fmt.Println(responseText)
 	// Create response
-    
+	_, ids, err := SearchBooksByTitleV1(requestData.Text)
+	//fmt.Println(resp)
+	var res string
+	if err != nil {
+		res = fmt.Sprintf("Error: %v\n", err)
+	} else {
+		res = fmt.Sprintf("Hits when searching for %v: %v\n", requestData.Text, ids)
+	}
+	// Create response
+	response := ResponseData{Response: res}
+
 	// Send JSON response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(responseText)
+	json.NewEncoder(w).Encode(response)
 }
 
 var db *sql.DB
 
 type Album struct {
-        ID     int64
-        Title  string
-        Artist string
-        Price  float32
-    }
+	ID     int64
+	Title  string
+	Artist string
+	Price  float32
+}
 
 func main() {
-    // Capture connection properties.
-    cfg := mysql.Config{
-        User:   "root",
-        Passwd: "AnkaAnka",
-        Net:    "tcp",
-        Addr:   "127.0.0.1:3306",
-        DBName: "bookstore",
-        AllowNativePasswords: true,
-    }
-    // Get a database handle.
-    var err error
-    db, err = sql.Open("mysql", cfg.FormatDSN())
-    if err != nil {
-        log.Fatal(err)
-    }
+	// Capture connection properties.
+	cfg := mysql.Config{
+		User:                 "root",
+		Passwd:               "AnkaAnka",
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		DBName:               "bookstore",
+		AllowNativePasswords: true,
+	}
+	// Get a database handle.
+	var err error
+	db, err = sql.Open("mysql", cfg.FormatDSN())
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    pingErr := db.Ping()
-    if pingErr != nil {
-        log.Fatal(pingErr)
-    }
-    fmt.Println("Connected!")
+	pingErr := db.Ping()
+	if pingErr != nil {
+		log.Fatal(pingErr)
+	}
+	fmt.Println("Connected!")
 
-    http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-    http.HandleFunc("/", viewHandler)
-    fmt.Println("a!")
-    http.HandleFunc("/root/", rootHandler)
-    fmt.Println("b!")
-    http.HandleFunc("/send", sendHandler)
-    fmt.Println("c!")
-    log.Fatal(http.ListenAndServe(":80", nil))
-    fmt.Println("Server uppe!")
+	http.HandleFunc("/", viewHandler)
+	fmt.Println("a!")
+	http.HandleFunc("/root/", rootHandler)
+	fmt.Println("b!")
+	http.HandleFunc("/send", sendHandler)
+	fmt.Println("c!")
+	log.Fatal(http.ListenAndServe(":80", nil))
+	fmt.Println("Server uppe!")
 }
