@@ -35,10 +35,10 @@ func GetBooksBySeller(sellerID int, includeAll bool) ([]Book, []int, error) {
 	var rows *sql.Rows
 
 	if includeAll {
-		rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM books WHERE SellerID = ?", sellerID)
+		rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE SellerID = ?", sellerID)
 
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM books WHERE SellerID = ? AND Status=TRUE", sellerID)
+		rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE SellerID = ? AND Status=TRUE", sellerID)
 	}
 
 	if err != nil {
@@ -62,16 +62,11 @@ func GetBooksBySeller(sellerID int, includeAll bool) ([]Book, []int, error) {
 }
 
 func AddBookMin(title string, author string, sellerID int) (int64, error) {
-
-	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID) VALUES (?, ?, ?)", title, author, sellerID)
-	if err != nil {
-		return 0, fmt.Errorf("addBookMin: %v", err)
+	nullStr := sql.NullString{
+		Valid: false,
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("addBookMin: %v", err)
-	}
-	return id, nil
+	var book = Book{title,author,sellerID,nullStr,nullStr,0,false}
+	return AddBook(book)
 
 }
 
@@ -95,7 +90,7 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, []int, error) {
 	var err error
 	var rows *sql.Rows
 
-	rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM books WHERE MATCH(Title) AGAINST(?)", titlesearch)
+	rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE MATCH(Title) AGAINST(?)", titlesearch)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err) //TODO fix format
@@ -124,7 +119,7 @@ func SearchBooksByTitleV2(titlesearch string) ([]Book, []int, error) {
 	var rows *sql.Rows
 
 	titlesearch = "%" + titlesearch + "%"
-	rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM books WHERE Title LIKE ?", titlesearch)
+	rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE Title LIKE ?", titlesearch)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err) //TODO fix format
