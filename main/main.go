@@ -40,7 +40,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 	requestPath := r.URL.Path
 	fmt.Println(requestPath)
 	if requestPath == "/" {
-		http.ServeFile(w, r, "start.html")
+		http.ServeFile(w, r, "website/start.html")
 	} else {
 		requestPath = requestPath[1:]
 		requestPath = "website/" + requestPath
@@ -117,7 +117,7 @@ func main() {
 	}
 	fmt.Println("Connected!")
 
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	//http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	http.HandleFunc("/", viewHandler)
 	fmt.Println("a!")
@@ -125,6 +125,7 @@ func main() {
 	fmt.Println("b!")
 	http.HandleFunc("/send", sendHandler)
 	fmt.Println("c!")
+
 	log.Fatal(http.ListenAndServe(":80", nil))
 	fmt.Println("Server uppe!")
 }
