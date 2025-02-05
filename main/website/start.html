@@ -19,18 +19,18 @@
 
 <div class="topnav">
     <a class="active" href="start/../start.html">Book Store</a>
-    <a id="userbtn" href="start/seller.html"><i class="fas fa-user-alt"></i></a>
+    <a id="userbtn" href="start/seller.html"></a>
 </div>
 
 <div class="flex-container">
     <form>
-        <!--<input id="inputField" type="text" placeholder=" Search book">
-        <button onclick="sendText()" type="submit">search</button> -->
+        <input id="search" type="text" placeholder=" Search book">
+        <button onclick="sendText()" type="submit">search</button> 
 
     </form>
 </div>
- <input type="text" id="inputField" placeholder="Enter text here">
-    <button onclick="sendText()">Send</button>
+ <!--<input type="text" id="inputField" placeholder="Enter text here">
+    <button onclick="sendText()">Send</button>-->
 
 <div class="flex-container"> 
     <!-- <div id="book">
@@ -71,14 +71,14 @@ $.each(books, function (i) {
 })
 
 const button = document.getElementById("showCard");
-const form = document.getElementById("addbook");
+const card = document.getElementById("viewCard");
 
 button.addEventListener("click", function() {
-    if (form.style.display === "none" || form.style.display === "") {
-        form.style.display = "block";
+    if (card.style.display === "none" || card.style.display === "") {
+        card.style.display = "block";
         button.textContent = "Back";
     } else {
-        form.style.display = "none";
+        card.style.display = "none";
         button.textContent = "Add book";
     }
 })

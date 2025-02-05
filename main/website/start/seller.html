@@ -20,13 +20,13 @@
     <div id="addbook">
         <card>
             <div class="flex-container">
-                <form action="/action_page.php">
-                    <input type="text" placeholder="Title" id="title"><br>
-                    <input type="text" placeholder="Author" id="author"><br>
-                    <input type="text" placeholder="Description" id="description"><br>
-                    <input type="text" placeholder="Year" id="year"><br>
-                    <input type="text" placeholder="Price" id="price"><br>
-                    <input type="text" placeholder="Edition" id="edition"><br>
+                <form action="/add_book">
+                    <input name="title" type="text" placeholder="Title" id="title"><br>
+                    <input name="author" type="text" placeholder="Author" id="author"><br>
+                    <input name="description" type="text" placeholder="Description" id="description"><br>
+                    <input name="year" type="text" placeholder="Year" id="year"><br>
+                    <input name="price" type="text" placeholder="Price" id="price"><br>
+                    <input name="edition" type="text" placeholder="Edition" id="edition"><br>
                     <label for="cathegory">Cathegory</label>
                     <select name="cathegory" id="cathegory" aria-placeholder="Cathegory">
                         <option value="literature">Literature</option>
@@ -50,12 +50,6 @@
 <a href="../start.html">start page</a>
 
 <script>
-
-
-
-function submitBooks() {
-
-}
 
 //$('#submitBooks').click( function() {
  //   Object.assign(books, { "Title": document.getElementById("title"), "Description": document.getElementById("description"), "Author": document.getElementById("author"), "Year": document.getElementById("year"), "BookID": "123", "Price": document.getElementById("price"), "Rating": "abc", "Edition": document.getElementById("edition"), "Cathegory": "abc", "Stock": "123" });
