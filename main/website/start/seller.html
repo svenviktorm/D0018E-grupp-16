@@ -20,7 +20,7 @@
     <div id="addbook">
         <card>
             <div class="flex-container">
-                <form action="/add_book">
+                <form action="/add_book" method="POST">   
                     <input name="title" type="text" placeholder="Title" id="title"><br>
                     <input name="author" type="text" placeholder="Author" id="author"><br>
                     <input name="description" type="text" placeholder="Description" id="description"><br>
@@ -47,9 +47,13 @@
 </div>
 
     
-<a href="../start.html">start page</a>
+<!--<a href="../start.html">start page</a>-->
 
 <script>
+
+function submitBooks() {
+    console.log("hejsan")
+}
 
 //$('#submitBooks').click( function() {
  //   Object.assign(books, { "Title": document.getElementById("title"), "Description": document.getElementById("description"), "Author": document.getElementById("author"), "Year": document.getElementById("year"), "BookID": "123", "Price": document.getElementById("price"), "Rating": "abc", "Edition": document.getElementById("edition"), "Cathegory": "abc", "Stock": "123" });
