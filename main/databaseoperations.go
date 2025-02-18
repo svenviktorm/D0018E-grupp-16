@@ -3,154 +3,269 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"encoding/binary"
+	"golang.org/x/crypto/sha3"
 )
 
-type Book struct {
-	Title       string
-	Author      string
-	SellerID    int
-	Description sql.NullString
-	Edition     sql.NullString
-	StockAmount int  //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
-	Status      bool //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
+type User struct {
+	UserID 		int32
+	Username 	string
+	Password 	string
+	Email 		sql.NullString
+	IsAdmin 	bool
+	IsSeller 	bool
 }
 
-func AddSeller(name string) (int64, error) {
-	result, err := db.Exec("INSERT INTO Sellers (Name) VALUES (?)", name)
+type Seller struct {
+	SellerID	int32
+	Name		string
+	Description sql.NullString
+}
+
+type Book struct {
+	BookID		int32
+	Title       string
+	SellerID    int32
+	Edition     sql.NullString
+	Description sql.NullString
+	StockAmount int32  //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
+	Available	bool //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
+	ISBN		sql.NullInt32
+	NumRatings  sql.NullInt32
+	SumRatings 	sql.NullInt32
+	Price 		sql.NullInt32
+}
+func hash(plaintext string) (int64) {
+	h := sha3.New256()
+	h.Write([]byte(plaintext))
+	hash := h.Sum(nil)
+	//first 64 bits
+	return int64(binary.BigEndian.Uint64(hash[:8]))
+}
+
+func AddUser(username string, password string, email sql.NullString) (int32, error) {
+	fmt.Println("kalle")
+	var passwordHash int64 = hash(password)
+	result, err := db.Exec("INSERT INTO Users (username, PasswordHash, email, IsAdmin, IsSeller) VALUES (?, ?, ?, ? , ?)", username, passwordHash, email,false,false)
 	if err != nil {
-		return 0, fmt.Errorf("AddSeller: %v", err)
+		fmt.Println("anka2")
+		return 0, fmt.Errorf("AddUser: %v", err)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("AddSeller: %v", err)
+		fmt.Println("anka1")
+		return 0, fmt.Errorf("AddUser: %v", err)
 	}
-	return id, nil
+	var i32 int32 = int32(id)
+	fmt.Println("anka")
+	return i32, nil
 }
 
-func GetBooksBySeller(sellerID int, includeAll bool) ([]Book, []int, error) {
+func LogInCheckNotHashed(username string, password string) (int32, error) {
+	var passwordHash int64 = hash(password)
+	return LoginCheck(username, passwordHash)
+}
+
+func LoginCheck(username string, passwordHash int64) (int32, error) {
+	
+	rows, err := db.Query("SELECT Id FROM Users WHERE Username = ? AND PasswordHash = ? ",username,passwordHash)
+	if err != nil {
+		return 0, fmt.Errorf("LoginCheck: %v", err)
+	}
+	
+	for rows.Next() {
+		var id int32 = -3
+		err := rows.Scan(&id)
+		if err != nil {
+			fmt.Errorf("LoginCheck: %v", err)
+		}
+		return id, err
+	}
+	if err != nil {
+		return 8, fmt.Errorf("LoginCheck: No User found %v", err)
+	}
+	return -9, fmt.Errorf("LoginCheck: No User found")
+}
+
+func AddSeller(user User,name string, description sql.NullString) (int32, error) {
+	userid, loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
+	if loginerr != nil {
+		return -1, fmt.Errorf("AddSeller: %v", loginerr)
+	}
+
+	fmt.Println("ANKA; ",userid,loginerr)
+	
+	tx, dberr := db.Begin()
+	//defer db.Close()
+	if dberr != nil {
+		return -2, fmt.Errorf("transaction erroor:",dberr)
+	} 	
+	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, userid, description)
+	if err != nil {
+		tx.Rollback()
+		return -3, fmt.Errorf("AddSeller: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return -4, fmt.Errorf("AddSeller: %v", err)
+	}
+	db.Exec("UPDATE users SET IsSeller = True WHERE ID = ?",userid)
+	if err != nil {
+		tx.Rollback()
+		return -5, fmt.Errorf("AddSeller: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		fmt.Errorf("Error committing transaction:", err)
+	}
+	return int32(id), nil 
+}
+
+func GetUserByID(userID int32) (User, error) {
+	rows, err := db.Query("SELECT Id, Username, PasswordHash, Email, IsAdmin, IsSeller FROM Users WHERE Id = ? ",userID)
+	if err != nil {
+		fmt.Errorf("Error getting:", err)
+	}
+	for rows.Next(){
+		var user User 
+		
+		if err := rows.Scan(&user.UserID,&user.Username,&user.Password, &user.Email, &user.IsAdmin, &user.IsSeller);  err != nil {
+			return User{}, fmt.Errorf("GetUserID %q: %v", userID, err)
+		}
+		user.Password = ""
+		return user, nil
+	}
+	return User{}, nil
+}
+
+func GetBooksBySeller(sellerID int, includeAvailable bool) ([]Book, error) {
 
 	var books []Book
-	var ids []int
 	var err error
 	var rows *sql.Rows
 
-	if includeAll {
-		rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE SellerID = ?", sellerID)
+	if includeAvailable {
+		rows, err = db.Query("SELECT Id,Title,Edition,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE SellerID = ?", sellerID)
 
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE SellerID = ? AND Status=TRUE", sellerID)
+		rows, err = db.Query("SELECT Id,Title,Edition,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE SellerID = ? AND Available=TRUE", sellerID)
 	}
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("getBooksBySeller %q: %v", sellerID, err) //TODO fix format
+		return nil, fmt.Errorf("getBooksBySeller %q: %v", sellerID, err) //TODO fix format
 	}
 	defer rows.Close()
 	// Loop through rows, using Scan to assign column data to struct fields.
 	for rows.Next() {
 		var b Book
-		var i int
-		if err := rows.Scan(&i, &b.Title, &b.Author, &b.Edition, &b.StockAmount); err != nil {
-			return nil, nil, fmt.Errorf("getBooksBySeller %q: %v", sellerID, err)
+		if err := rows.Scan( &b.BookID , &b.Title, &b.Edition, &b.StockAmount, &b.Available, &b.ISBN, &b.NumRatings, &b.SumRatings, &b.Price); err != nil {
+			return nil, fmt.Errorf("getBooksBySeller %q: %v", sellerID, err)
 		}
 		books = append(books, b)
-		ids = append(ids, i)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("getBooksBySeller %q: %v", sellerID, err)
+		return nil, fmt.Errorf("getBooksBySeller %q: %v", sellerID, err)
 	}
-	return books, ids, nil
+	return books, nil
 }
 
-func AddBookMin(title string, author string, sellerID int) (int64, error) {
+func AddBookMin(title string, sellerID int32) (int32, error) {
 	nullStr := sql.NullString{
 		Valid: false,
 	}
-	var book = Book{title,author,sellerID,nullStr,nullStr,0,false}
+	nullInt32 := sql.NullInt32{
+		Valid: false,
+	}
+
+	zeroInt32 := sql.NullInt32{
+		Valid: false,
+		Int32: 0,
+	}
+	//id of -99 should not be used
+	var book = Book{-99,title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
 	return AddBook(book)
 
 }
-
-func AddBook(book Book) (int64, error) {
-
-	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Description, Edition, StockAmount, Status) VALUES (?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, book.SellerID, book.Description, book.Edition, book.StockAmount, book.Status)
+// will not use the id of the book but create one
+func AddBook(book Book) (int32, error) {
+	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.SellerID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
 	if err != nil {
-		return 0, fmt.Errorf("addBook: %v", err)
+		return -1, fmt.Errorf("addBook: %v", err)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("addBook: %v", err)
+		return -2, fmt.Errorf("addBook: %v", err)
 	}
-	return id, nil
+	return int32(id), nil
 
 }
 
-func SearchBooksByTitleV1(titlesearch string) ([]Book, []int, error) {
+func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 	var books []Book
-	var ids []int
+	var ids []int32
 	var err error
 	var rows *sql.Rows
 
-	rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE MATCH(Title) AGAINST(?)", titlesearch)
+	rows, err = db.Query("SELECT Id,Title,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE MATCH(Title) AGAINST(?)", titlesearch)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err) //TODO fix format
+		return nil, fmt.Errorf("searchBooksByTitlev1 %q: %v", titlesearch, err) //TODO fix format
 	}
 	defer rows.Close()
 	// Loop through rows, using Scan to assign column data to struct fields.
 	for rows.Next() {
 		var b Book
-		var i int
-		if err := rows.Scan(&i, &b.Title, &b.Author, &b.Edition, &b.StockAmount); err != nil {
-			return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err)
+		var i int32
+		if err := rows.Scan(&b.BookID ,&b.Title, &b.Edition,&b.Description, &b.StockAmount, &b.Available, &b.ISBN, &b.NumRatings, &b.SumRatings, &b.Price); err != nil {
+			return nil, fmt.Errorf("searchBooksByTitlev1 %q: %v", titlesearch, err)
 		}
 		books = append(books, b)
 		ids = append(ids, i)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err)
+		return nil, fmt.Errorf("searchBooksByTitlev1 %q: %v", titlesearch, err)
 	}
-	return books, ids, nil
+	return books, nil
 }
 
-func SearchBooksByTitleV2(titlesearch string) ([]Book, []int, error) {
+func SearchBooksByTitleV2(titlesearch string) ([]Book, error) {
 	var books []Book
-	var ids []int
 	var err error
 	var rows *sql.Rows
 
 	titlesearch = "%" + titlesearch + "%"
-	rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE Title LIKE ?", titlesearch)
+	rows, err = db.Query("SELECT Id,Title,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Title LIKE ?", titlesearch)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err) //TODO fix format
+		return nil, fmt.Errorf("searchBooksByTitlev2 %q: %v", titlesearch, err) //TODO fix format
 	}
 	defer rows.Close()
 	// Loop through rows, using Scan to assign column data to struct fields.
 	for rows.Next() {
 		var b Book
-		var i int
-		if err := rows.Scan(&i, &b.Title, &b.Author, &b.Edition, &b.StockAmount); err != nil {
-			return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err)
+		if err := rows.Scan(&b.BookID ,&b.Title, &b.Edition,&b.Description, &b.StockAmount, &b.Available, &b.ISBN, &b.NumRatings, &b.SumRatings, &b.Price); err != nil {
+			return nil, fmt.Errorf("searchBooksByTitlev2 %q: %v", titlesearch, err)
 		}
 		books = append(books, b)
-		ids = append(ids, i)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err)
+		return nil, fmt.Errorf("searchBooksByTitlev2 %q: %v", titlesearch, err)
 	}
-	return books, ids, nil
+	return books, nil
 }
 
 func DisplayBooklist(books []Book) {
 	// just for testing purposes
 	var edition string
+	fmt.Println("| Ttitle | Edition | stock amount | seller name | ")
 	for _, b := range books {
 		if b.Edition.Valid {
 			edition = b.Edition.String
 		} else {
 			edition = "NULL"
 		}
-		fmt.Println("|", b.Title, "|", b.Author, "|", edition, "|", b.StockAmount, "|")
+		fmt.Println("|", b.Title, "|", edition, "|", b.StockAmount, "|",)
 
 	}
 }
