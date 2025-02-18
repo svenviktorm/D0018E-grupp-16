@@ -31,7 +31,7 @@ type Book struct {
 	StockAmount int32  //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
 	Available	bool //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
 	ISBN		sql.NullInt32
-	NumRatings  sql.NullInt32
+	NumRatings  sql.NullInt32 
 	SumRatings 	sql.NullInt32
 	Price 		sql.NullInt32
 }
@@ -60,12 +60,12 @@ func AddUser(username string, password string, email sql.NullString) (int32, err
 	fmt.Println("anka")
 	return i32, nil
 }
-
+//for checking if a username and password exists
 func LogInCheckNotHashed(username string, password string) (int32, error) {
 	var passwordHash int64 = hash(password)
 	return LoginCheck(username, passwordHash)
 }
-
+//for checking a username with an already hashed password
 func LoginCheck(username string, passwordHash int64) (int32, error) {
 	
 	rows, err := db.Query("SELECT Id FROM Users WHERE Username = ? AND PasswordHash = ? ",username,passwordHash)
@@ -88,6 +88,7 @@ func LoginCheck(username string, passwordHash int64) (int32, error) {
 }
 
 func AddSeller(user User,name string, description sql.NullString) (int32, error) {
+	//check if user exists can be converted to use userid as input instead
 	userid, loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
 	if loginerr != nil {
 		return -1, fmt.Errorf("AddSeller: %v", loginerr)
@@ -121,7 +122,7 @@ func AddSeller(user User,name string, description sql.NullString) (int32, error)
 	}
 	return int32(id), nil 
 }
-
+//retursn a user struct from their userID
 func GetUserByID(userID int32) (User, error) {
 	rows, err := db.Query("SELECT Id, Username, PasswordHash, Email, IsAdmin, IsSeller FROM Users WHERE Id = ? ",userID)
 	if err != nil {
@@ -129,11 +130,12 @@ func GetUserByID(userID int32) (User, error) {
 	}
 	for rows.Next(){
 		var user User 
-		
 		if err := rows.Scan(&user.UserID,&user.Username,&user.Password, &user.Email, &user.IsAdmin, &user.IsSeller);  err != nil {
 			return User{}, fmt.Errorf("GetUserID %q: %v", userID, err)
 		}
+		// the returend password will be hashed and therefore usless and therefore removed to not cause confusion
 		user.Password = ""
+		//there should only be one user per ID otherwise something is wrong with the database 
 		return user, nil
 	}
 	return User{}, nil
@@ -169,7 +171,7 @@ func GetBooksBySeller(sellerID int, includeAvailable bool) ([]Book, error) {
 	}
 	return books, nil
 }
-
+//creates a book from minimal information
 func AddBookMin(title string, sellerID int32) (int32, error) {
 	nullStr := sql.NullString{
 		Valid: false,
@@ -189,7 +191,17 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 }
 // will not use the id of the book but create one
 func AddBook(book Book) (int32, error) {
-	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.SellerID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
+	user, err := GetUserByID(book.SellerID)
+	if err != nil {
+		return -1, fmt.Errorf("AddSeller: %v", err)
+	}
+	//check if seller exists can be optimized
+	userid, loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
+	if loginerr != nil {
+		return -1, fmt.Errorf("AddSeller: %v", loginerr)
+	}
+
+	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, userid, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
 	if err != nil {
 		return -1, fmt.Errorf("addBook: %v", err)
 	}
