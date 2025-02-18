@@ -61,37 +61,43 @@ func AddUser(username string, password string, email sql.NullString) (int32, err
 	return i32, nil
 }
 //for checking if a username and password exists
-func LogInCheckNotHashed(username string, password string) (int32, error) {
+func LogInCheckNotHashed(username string, password string) (userID int32, loginSucces bool, isAdmin bool, IsSeller bool, err error) {
 	var passwordHash int64 = hash(password)
 	return LoginCheck(username, passwordHash)
 }
 //for checking a username with an already hashed password
-func LoginCheck(username string, passwordHash int64) (int32, error) {
+func LoginCheck(username string, passwordHash int64) (userID int32, loginSucces bool, isAdmin bool, IsSeller bool, err error) {
 	
-	rows, err := db.Query("SELECT Id FROM Users WHERE Username = ? AND PasswordHash = ? ",username,passwordHash)
+	rows, err := db.Query("SELECT Id, IsAdmin, IsSeller FROM Users WHERE Username = ? AND PasswordHash = ? ",username,passwordHash)
 	if err != nil {
-		return 0, fmt.Errorf("LoginCheck: %v", err)
+		return -1,false,false,false, fmt.Errorf("LoginCheck: %v", err)
 	}
 	
 	for rows.Next() {
-		var id int32 = -3
-		err := rows.Scan(&id)
+		var id int32
+		var isAdmin bool
+		var isSeller bool
+		err := rows.Scan(&id, &isAdmin, &isSeller)
 		if err != nil {
 			fmt.Errorf("LoginCheck: %v", err)
 		}
-		return id, err
+		return id, true, isAdmin, isSeller, err
 	}
 	if err != nil {
-		return 8, fmt.Errorf("LoginCheck: No User found %v", err)
+		return -8, false, false, false, fmt.Errorf("LoginCheck: No User found %v", err)
 	}
-	return -9, fmt.Errorf("LoginCheck: No User found")
+	return -9,false,false,false, fmt.Errorf("LoginCheck: No User found")
 }
 
 func AddSeller(user User,name string, description sql.NullString) (int32, error) {
 	//check if user exists can be converted to use userid as input instead
-	userid, loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
+	userid,loginSucces,_,_, loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
 	if loginerr != nil {
 		return -1, fmt.Errorf("AddSeller: %v", loginerr)
+	}
+
+	if !loginSucces {
+		return -1, fmt.Errorf("AddSeller: loginsfail %v", loginerr)
 	}
 
 	fmt.Println("ANKA; ",userid,loginerr)
@@ -196,9 +202,13 @@ func AddBook(book Book) (int32, error) {
 		return -1, fmt.Errorf("AddSeller: %v", err)
 	}
 	//check if seller exists can be optimized
-	userid, loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
-	if loginerr != nil {
+	userid, loginSucces ,_, _ ,  loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
+	if loginerr != nil  {
 		return -1, fmt.Errorf("AddSeller: %v", loginerr)
+	}
+
+	if !loginSucces {
+		return -1, fmt.Errorf("AddSeller: loginsfail %v", loginerr)
 	}
 
 	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, userid, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)

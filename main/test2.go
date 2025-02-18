@@ -47,7 +47,7 @@ func main() {
 	ids, error := AddUser("Kalle Anka","1234",sql.NullString{"KalleAnka@123.com", true})
 	fmt.Println(ids, error)
 	fmt.Println("kalle")
-	userID, errorr := LogInCheckNotHashed("Kalle Anka","1234");
+	userID,_,_,_, errorr := LogInCheckNotHashed("Kalle Anka","1234");
 	fmt.Println("Login: ",userID, errorr)
 
 	user, err := GetUserByID(userID)
