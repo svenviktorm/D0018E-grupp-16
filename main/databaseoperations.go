@@ -61,16 +61,17 @@ func AddUser(username string, password string, email sql.NullString) (int32, err
 	return i32, nil
 }
 //for checking if a username and password exists
-func LogInCheckNotHashed(username string, password string) (userID int32, loginSucces bool, isAdmin bool, IsSeller bool, err error) {
+func LogInCheckNotHashed(username string, password string) (user User, loginSucces bool, err error) {
 	var passwordHash int64 = hash(password)
 	return LoginCheck(username, passwordHash)
 }
 //for checking a username with an already hashed password
-func LoginCheck(username string, passwordHash int64) (userID int32, loginSucces bool, isAdmin bool, IsSeller bool, err error) {
+func LoginCheck(username string, passwordHash int64) (user User, loginSucces bool, err error) {
 	
 	rows, err := db.Query("SELECT Id, IsAdmin, IsSeller FROM Users WHERE Username = ? AND PasswordHash = ? ",username,passwordHash)
 	if err != nil {
-		return -1,false,false,false, fmt.Errorf("LoginCheck: %v", err)
+		var user User = User{}
+		return user , false, fmt.Errorf("LoginCheck: %v", err)
 	}
 	
 	for rows.Next() {
@@ -81,17 +82,18 @@ func LoginCheck(username string, passwordHash int64) (userID int32, loginSucces 
 		if err != nil {
 			fmt.Errorf("LoginCheck: %v", err)
 		}
-		return id, true, isAdmin, isSeller, err
+		var user User = User{}
+		return user, true, err
 	}
 	if err != nil {
-		return -8, false, false, false, fmt.Errorf("LoginCheck: No User found %v", err)
+		return User{}, false, fmt.Errorf("LoginCheck: No User found %v", err)
 	}
-	return -9,false,false,false, fmt.Errorf("LoginCheck: No User found")
+	return User{},false, fmt.Errorf("LoginCheck: No User found")
 }
 
 func AddSeller(user User,name string, description sql.NullString) (int32, error) {
 	//check if user exists can be converted to use userid as input instead
-	userid,loginSucces,_,_, loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
+	user,loginSucces, loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
 	if loginerr != nil {
 		return -1, fmt.Errorf("AddSeller: %v", loginerr)
 	}
@@ -100,14 +102,14 @@ func AddSeller(user User,name string, description sql.NullString) (int32, error)
 		return -1, fmt.Errorf("AddSeller: loginsfail %v", loginerr)
 	}
 
-	fmt.Println("ANKA; ",userid,loginerr)
+	fmt.Println("ANKA; ",user.UserID,loginerr)
 	
 	tx, dberr := db.Begin()
 	//defer db.Close()
 	if dberr != nil {
 		return -2, fmt.Errorf("transaction erroor:",dberr)
 	} 	
-	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, userid, description)
+	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
 	if err != nil {
 		tx.Rollback()
 		return -3, fmt.Errorf("AddSeller: %v", err)
@@ -117,7 +119,7 @@ func AddSeller(user User,name string, description sql.NullString) (int32, error)
 		tx.Rollback()
 		return -4, fmt.Errorf("AddSeller: %v", err)
 	}
-	db.Exec("UPDATE users SET IsSeller = True WHERE ID = ?",userid)
+	db.Exec("UPDATE users SET IsSeller = True WHERE ID = ?",user.UserID)
 	if err != nil {
 		tx.Rollback()
 		return -5, fmt.Errorf("AddSeller: %v", err)
@@ -202,7 +204,7 @@ func AddBook(book Book) (int32, error) {
 		return -1, fmt.Errorf("AddSeller: %v", err)
 	}
 	//check if seller exists can be optimized
-	userid, loginSucces ,_, _ ,  loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
+	user, loginSucces ,  loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
 	if loginerr != nil  {
 		return -1, fmt.Errorf("AddSeller: %v", loginerr)
 	}
@@ -211,7 +213,7 @@ func AddBook(book Book) (int32, error) {
 		return -1, fmt.Errorf("AddSeller: loginsfail %v", loginerr)
 	}
 
-	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, userid, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
+	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
 	if err != nil {
 		return -1, fmt.Errorf("addBook: %v", err)
 	}
