@@ -2,17 +2,19 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 )
 
 type Book struct {
-	Title       string
-	Author      string
-	SellerID    int
-	Description sql.NullString
-	Edition     sql.NullString
-	StockAmount int  //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
-	Status      bool //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
+	Title       string         `json:"title"`
+	SellerID    int            `json:"sellerid"`
+	Description sql.NullString `json:"description"`
+	Price       int            `json:"price"`
+	Edition     sql.NullString `json:"edition"`
+	Cathegory   string         `json:"cathegory"`
+	StockAmount int            `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
+	Status      bool           `json:"status"`      //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
 }
 
 func AddSeller(name string) (int64, error) {
@@ -35,10 +37,10 @@ func GetBooksBySeller(sellerID int, includeAll bool) ([]Book, []int, error) {
 	var rows *sql.Rows
 
 	if includeAll {
-		rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE SellerID = ?", sellerID)
+		rows, err = db.Query("SELECT Id,Edition,StockAmount FROM Books WHERE SellerID = ?", sellerID)
 
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE SellerID = ? AND Status=TRUE", sellerID)
+		rows, err = db.Query("SELECT Id,Edition,StockAmount FROM Books WHERE SellerID = ? AND Status=TRUE", sellerID)
 	}
 
 	if err != nil {
@@ -49,7 +51,7 @@ func GetBooksBySeller(sellerID int, includeAll bool) ([]Book, []int, error) {
 	for rows.Next() {
 		var b Book
 		var i int
-		if err := rows.Scan(&i, &b.Title, &b.Author, &b.Edition, &b.StockAmount); err != nil {
+		if err := rows.Scan(&i, &b.Title, &b.Edition, &b.StockAmount); err != nil {
 			return nil, nil, fmt.Errorf("getBooksBySeller %q: %v", sellerID, err)
 		}
 		books = append(books, b)
@@ -61,18 +63,22 @@ func GetBooksBySeller(sellerID int, includeAll bool) ([]Book, []int, error) {
 	return books, ids, nil
 }
 
-func AddBookMin(title string, author string, sellerID int) (int64, error) {
+func AddBookMin(title string, sellerID int) (int64, error) {
 	nullStr := sql.NullString{
 		Valid: false,
 	}
-	var book = Book{title,author,sellerID,nullStr,nullStr,0,false}
+	var book = Book{title, sellerID, nullStr, 0, nullStr, "", 0, false}
 	return AddBook(book)
 
 }
 
 func AddBook(book Book) (int64, error) {
 
-	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Description, Edition, StockAmount, Status) VALUES (?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, book.SellerID, book.Description, book.Edition, book.StockAmount, book.Status)
+	// Convert to JSON to check output
+	jsonData, _ := json.MarshalIndent(book, "", "  ")
+	fmt.Println(string(jsonData))
+	sellerid := 1
+	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Description, Price, Edition, Cathegory, StockAmount, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", book.Title, sellerid, book.Description, book.Price, book.Edition, book.Cathegory, book.StockAmount, book.Status)
 	if err != nil {
 		return 0, fmt.Errorf("addBook: %v", err)
 	}
@@ -81,7 +87,6 @@ func AddBook(book Book) (int64, error) {
 		return 0, fmt.Errorf("addBook: %v", err)
 	}
 	return id, nil
-
 }
 
 func SearchBooksByTitleV1(titlesearch string) ([]Book, []int, error) {
@@ -90,7 +95,7 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, []int, error) {
 	var err error
 	var rows *sql.Rows
 
-	rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE MATCH(Title) AGAINST(?)", titlesearch)
+	rows, err = db.Query("SELECT Id,Title,Edition,StockAmount FROM Books WHERE MATCH(Title) AGAINST(?)", titlesearch)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err) //TODO fix format
@@ -100,7 +105,7 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, []int, error) {
 	for rows.Next() {
 		var b Book
 		var i int
-		if err := rows.Scan(&i, &b.Title, &b.Author, &b.Edition, &b.StockAmount); err != nil {
+		if err := rows.Scan(&i, &b.Title, &b.Edition, &b.StockAmount); err != nil {
 			return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err)
 		}
 		books = append(books, b)
@@ -119,7 +124,7 @@ func SearchBooksByTitleV2(titlesearch string) ([]Book, []int, error) {
 	var rows *sql.Rows
 
 	titlesearch = "%" + titlesearch + "%"
-	rows, err = db.Query("SELECT Id,Title,Author,Edition,StockAmount FROM Books WHERE Title LIKE ?", titlesearch)
+	rows, err = db.Query("SELECT Id,Title,Edition,StockAmount FROM Books WHERE Title LIKE ?", titlesearch)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err) //TODO fix format
@@ -129,7 +134,7 @@ func SearchBooksByTitleV2(titlesearch string) ([]Book, []int, error) {
 	for rows.Next() {
 		var b Book
 		var i int
-		if err := rows.Scan(&i, &b.Title, &b.Author, &b.Edition, &b.StockAmount); err != nil {
+		if err := rows.Scan(&i, &b.Title, &b.Edition, &b.StockAmount); err != nil {
 			return nil, nil, fmt.Errorf("searchBooksByTitle %q: %v", titlesearch, err)
 		}
 		books = append(books, b)
@@ -150,7 +155,7 @@ func DisplayBooklist(books []Book) {
 		} else {
 			edition = "NULL"
 		}
-		fmt.Println("|", b.Title, "|", b.Author, "|", edition, "|", b.StockAmount, "|")
+		fmt.Println("|", b.Title, "|", "|", edition, "|", b.StockAmount, "|")
 
 	}
 }

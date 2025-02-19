@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Book Shop</title>
+    <title>Book Store</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="/stylesheat.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
@@ -48,6 +48,13 @@
 
 </div> 
 
+<div class="flex-container">
+    <div id="viewCard" style="display: none;">
+       <div class="card">
+      </div>
+    </div>
+</div>
+
 <a href="start/seller.html">seller</a>
 
 </div>
@@ -67,7 +74,7 @@ $.each(books, function (i) {
         $('#books').append('<div class="row"></div>'); 
     }
 
-    var templateBook = '<div id="book"><div class="card" id="showCard"><div class?"container"><h4><b>' + books[i].Title + '</b></h4></div></div></div>';
+    var templateBook = '<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>' + books[i].Title + '</b></h4></div></div></div>';
     $('#books').append(templateBook);
 })
 
@@ -77,10 +84,8 @@ const card = document.getElementById("viewCard");
 button.addEventListener("click", function() {
     if (card.style.display === "none" || card.style.display === "") {
         card.style.display = "block";
-        button.textContent = "Back";
     } else {
         card.style.display = "none";
-        button.textContent = "viewBook";
     }
 })
 

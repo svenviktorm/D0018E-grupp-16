@@ -39,10 +39,10 @@ func main() {
 	var b Book
 	//fmt.Println(b)
 
-	b2 := Book{Title: "title book 1", Author: "author", SellerID: 1}
+	b2 := Book{Title: "title book 1", SellerID: 1}
 	//fmt.Println(b2)
 
-	b3 := Book{Title: "testbook2", Author: "another author", SellerID: 1, Description: sql.NullString{"a nice long description", true}, Edition: sql.NullString{"edition 1", true}, StockAmount: 3, Status: false}
+	b3 := Book{Title: "testbook2", SellerID: 1, Description: sql.NullString{"a nice long description", true}, Edition: sql.NullString{"edition 1", true}, StockAmount: 3, Status: false}
 	//fmt.Println(b3)
 
 	id, error := AddSeller("testseller")

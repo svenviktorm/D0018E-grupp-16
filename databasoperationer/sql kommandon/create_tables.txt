@@ -17,6 +17,8 @@ CREATE TABLE Books(
     Description TEXT,
     StockAmount INT NOT NULL DEFAULT 0,
     Status BOOL NOT NULL DEFAULT TRUE,
+    Cathegory VARCHAR(100),
+    Price INT,
     PRIMARY KEY (ID),
     FOREIGN KEY (SellerID) REFERENCES Sellers(ID),
     FULLTEXT(Title)
