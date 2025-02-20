@@ -37,6 +37,7 @@ func (p *Page) save() error {
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("viewHandler called")
 	requestPath := r.URL.Path
 	fmt.Println(requestPath)
 	if requestPath == "/" {
@@ -53,6 +54,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("userHandler called")
 	switch r.Method {
 	case http.MethodGet:
 		fmt.Println("Get request to users API")
@@ -62,20 +64,23 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		//fmt.Println(r.Form)
 		uname := r.FormValue("username")
 		pwd := r.FormValue("password")
-		//fmt.Printf("username:%v, password:%v\n", uname, pwd)
+		fmt.Printf("username:%v, password:%v, hash:%v", uname, pwd, hash(pwd))
 		//fmt.Println(r.Form)
 
 		user, loginOK, err := LogInCheckNotHashed(uname, pwd)
-		//TODO handle server errors?
-		//fmt.Printf("login ok?:%v, userID:%v seller?:%v, admin?:%v/n", loginOK, userID, isSeller, isAdmin)
-		if err != nil {
-			//TODO error handling
-		}
+
+		fmt.Printf("login ok?:%v, userID:%v seller?:%v, admin?:%v ", loginOK, user.UserID, user.IsSeller, user.IsAdmin)
+		
+		fmt.Println("")
 		if loginOK {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(user)
 		} else {
+			//error hadeling shuld be in here
 			http.Error(w, "Invalid username or password", http.StatusNotFound)
+			if err != nil {
+
+			}
 		}
 	case http.MethodPost:
 		fmt.Println("Post request to users API")
@@ -92,6 +97,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func sendHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("sendHandler called")
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -108,13 +114,13 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 	responseText := fmt.Sprintf("You sent: %s", requestData.Text)
 	fmt.Println(responseText)
 	// Create response
-	_, ids, err := SearchBooksByTitleV1(requestData.Text)
+	books, err := SearchBooksByTitleV1(requestData.Text)
 	//fmt.Println(resp)
 	var res string
 	if err != nil {
 		res = fmt.Sprintf("Error: %v\n", err)
 	} else {
-		res = fmt.Sprintf("Hits when searching for %v: %v\n", requestData.Text, ids)
+		res = fmt.Sprintf("Hits when searching for %v: %v\n", requestData.Text, books)
 	}
 
 	// Create response

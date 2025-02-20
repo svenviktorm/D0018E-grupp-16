@@ -44,7 +44,7 @@ func main() {
 
 	b3 := Book{Title: "testbook2", SellerID: 1, Description: sql.NullString{"a nice long description", true}, Edition: sql.NullString{"edition 1", true}, StockAmount: 3, Available: false}
 	//fmt.Println(b3)
-	ids, error := AddUser("Kalle Anka","1234",sql.NullString{"KalleAnka@123.com", true})
+	ids, error := AddUser("KalleAnka","1234",sql.NullString{"KalleAnka@123.com", true})
 	fmt.Println(ids, error)
 	fmt.Println("kalle")
 	user,_, errorr := LogInCheckNotHashed("Kalle Anka","1234");

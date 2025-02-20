@@ -16,16 +16,6 @@ type User struct {
 	IsSeller bool
 }
 
-type Book struct {
-	Title       string
-	Author      string
-	SellerID    int
-	Description sql.NullString
-	Edition     sql.NullString
-	StockAmount int  //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
-	Status      bool //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
-}
-
 type Seller struct {
 	SellerID	int32
 	Name		string
@@ -302,40 +292,4 @@ func DisplayBooklist(books []Book) {
 		fmt.Println("|", b.Title, "|", edition, "|", b.StockAmount, "|",)
 
 	}
-}
-
-func LogInCheckNotHashed(username string, password string) (user User, loginSuccess bool, err error) {
-	//This is just a placeholder function to test the webserver part.
-	// The actual function should (preferably) use the same specification, just fix the body so it actually does something useful
-	loginSuccess = false
-	user.IsSeller = false
-	user.IsAdmin = false
-	user.UserID = -1
-	switch username {
-	case "aSeller":
-		if password == "sellerPwd" {
-			loginSuccess = true
-			user.IsSeller = true
-			user.UserID = 1
-		}
-	case "anAdmin":
-		if password == "adminPwd" {
-			loginSuccess = true
-			user.IsAdmin = true
-			user.UserID = 2
-		}
-	case "aBuyer":
-		if password == "buyerPwd" {
-			loginSuccess = true
-			user.UserID = 3
-		}
-	case "aMess":
-		if password == "messPwd" {
-			loginSuccess = true
-			user.IsAdmin = true
-			user.IsSeller = true
-			user.UserID = 4
-		}
-	}
-	return
 }
