@@ -13,7 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-
+	"strconv"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -142,14 +142,29 @@ type Album struct {
 }
 
 func addBookHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("addBookHandler called")
 	if r.Method != http.MethodPost {
+		fmt.Println("Invalid request method ",r.Method)
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
 
+
 	var book Book
 	err := json.NewDecoder(r.Body).Decode(&book)
+	fmt.Println("Book: ", book)
+	for a, c := range r.Cookies() {
+		fmt.Println(c, " | ", a)
+	}
+
 	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		http.Error(w, "Failed to get cookie: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Println("username: @ ", 1)
+	if err != nil {
+		fmt.Println("Invalid JSON", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -158,6 +173,7 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := AddBook(book)
 	if err != nil {
+		fmt.Println("Failed to add book: ", err)
 		http.Error(w, "Failed to add book: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -174,10 +190,24 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
-	sellerId := 1
-
-	books, err := viewSellerBooks(sellerId)
+	fmt.Println("viewBooksBySellerHandler called")
+	sellerId := r.Header.Get("sellerid")
+	fmt.Println("sellerId: ", sellerId)
+	if sellerId == "" {
+		fmt.Println("Missing sellerid")
+		http.Error(w, "Missing sellerid", http.StatusBadRequest)
+		return
+	}
+	sellerIdint, err := strconv.Atoi(sellerId)
 	if err != nil {
+		fmt.Println("Invalid sellerid")
+		http.Error(w, "Invalid sellerid", http.StatusBadRequest)
+		return
+	}
+
+	books, err := viewSellerBooks(sellerIdint)
+	if err != nil {
+		fmt.Println("Failed to get books: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -191,9 +221,8 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			"description": book.Description.String,
 			"price":       book.Price,
 			"edition":     book.Edition.String,
-			"cathegory":   book.Cathegory,
 			"stockAmount": book.StockAmount,
-			"status":      book.Status,
+			"status":      book.Available,
 		})
 	}
 
@@ -205,6 +234,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 		"books":  formattedBooks,
 	})
 	if err != nil {
+		fmt.Println("Failed to encode response: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

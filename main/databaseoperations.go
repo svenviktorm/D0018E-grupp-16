@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"encoding/binary"
 	"golang.org/x/crypto/sha3"
@@ -34,7 +33,7 @@ type Book struct {
 	ISBN		sql.NullInt32
 	NumRatings  sql.NullInt32 
 	SumRatings 	sql.NullInt32
-	Price 		sql.NullInt32	`json:"price"`
+	Price 		int32	`json:"price"`
 }
 func hash(plaintext string) (int64) {
 	h := sha3.New256()
@@ -195,7 +194,7 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 		Int32: 0,
 	}
 	//id of -99 should not be used
-	var book = Book{-99,title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
+	var book = Book{-99,title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, 0}
 	return AddBook(book)
 
 }
@@ -284,7 +283,7 @@ func SearchBooksByTitleV2(titlesearch string) ([]Book, error) {
 func viewSellerBooks(sellerID int) ([]Book, error) {
 	var books []Book
 
-	rows, err := db.Query("SELECT Title, Description, Price, Edition, Cathegory, StockAmount FROM Books WHERE SellerID = ?", sellerID)
+	rows, err := db.Query("SELECT Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings FROM Books WHERE SellerID = ?", sellerID)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +291,7 @@ func viewSellerBooks(sellerID int) ([]Book, error) {
 
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.Title, &book.Description, &book.Price, &book.Edition, &book.Cathegory, &book.StockAmount)
+		err := rows.Scan(&book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings)
 		if err != nil {
 			return nil, err
 		}
