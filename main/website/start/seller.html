@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <link rel="stylesheet" href="../stylesheat.css">
     <title>Seller Page</title>
 </head>
@@ -14,32 +15,25 @@
     <a class="active" href="../start.html">Book Store</a>
 </div>
 
+<div class="row">
+    <button id="viewBooksButton">books</button>
+    <div id="books"></div>
+</div>
+
 <button id="showform">Add book</button>
 
 <div class="flex-container">
     <div id="addbook">
         <card>
             <div class="flex-container">
-                <form action="/add_book" method="POST">   
+                <form id="addBookForm">   
                     <input name="title" type="text" placeholder="Title" id="title"><br>
-                    <input name="author" type="text" placeholder="Author" id="author"><br>
                     <input name="description" type="text" placeholder="Description" id="description"><br>
-                    <input name="year" type="text" placeholder="Year" id="year"><br>
                     <input name="price" type="text" placeholder="Price" id="price"><br>
                     <input name="edition" type="text" placeholder="Edition" id="edition"><br>
-                    <label for="cathegory">Cathegory</label>
-                    <select name="cathegory" id="cathegory" aria-placeholder="Cathegory">
-                        <option value="literature">Literature</option>
-                        <option value="fantasy">Fantasy</option>
-                        <option value="nature">Nature</option>
-                    </select><br>
-                    <input type="submit" value="Submit" onclick="submitBooks();">
-                    <!-- <input type="radio" name="Cathegory" id="literature" value="literature">
-                    <label for="literature"></label>Literature<br>
-                    <input type="radio" name="Cathegory" id="fantasy" value="fantasy">
-                    <label for="fantasy"></label>Fantasy<br>
-                    <input type="radio" name="Cathegory" id="nature" value="nature">
-                    <label for="nature"></label>Nature<br> -->
+                    <input name="cathegory" type="text" placeholder="Cathegory" id="cathegory"><br>
+                    <input name="stockAmount" type="text" placeholder="Stock" id="stockAmount"><br>
+                    <input type="submit" value="Submit">
                 </form>
             </div>
         </card>
@@ -51,16 +45,9 @@
 
 <script>
 
-function submitBooks() {
-    console.log("hejsan")
-}
-
-//$('#submitBooks').click( function() {
- //   Object.assign(books, { "Title": document.getElementById("title"), "Description": document.getElementById("description"), "Author": document.getElementById("author"), "Year": document.getElementById("year"), "BookID": "123", "Price": document.getElementById("price"), "Rating": "abc", "Edition": document.getElementById("edition"), "Cathegory": "abc", "Stock": "123" });
-//});
-
 const button = document.getElementById("showform");
 const form = document.getElementById("addbook");
+const viewBooksButton = document.getElementById("viewBooksButton");
 
 button.addEventListener("click", function() {
     if (form.style.display === "none" || form.style.display === "") {
@@ -71,6 +58,85 @@ button.addEventListener("click", function() {
         button.textContent = "Add book";
     }
 })
+
+document.getElementById("addBookForm").addEventListener("submit", async function(event) {
+    event.preventDefault();  
+
+    const book = {
+        title: document.getElementById("title").value,
+        description: {String: document.getElementById("description").value, Valid: true},
+        price: parseInt(document.getElementById("price").value, 10),
+        edition: {String: document.getElementById("edition").value, Valid: true},
+        cathegory: document.getElementById("cathegory").value, 
+        stockAmount: parseInt(document.getElementById("stockAmount").value, 10)
+    };
+
+    console.log("Sending book data:", JSON.stringify(book));
+
+    try { 
+        const response = await fetch("/add_book", { 
+            method: "POST", 
+            //headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(book)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json();
+
+        console.log("Added book", result);
+        alert("Added book succesfully");
+    } catch (error) { 
+        console.error("Error adding book", error);
+        alert("Error adding book");
+    }
+}); 
+
+
+async function viewBooks() {
+    console.log("1");
+
+    try {
+        const response = await fetch("/viewSellerBook", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const jsonData = await response.json();
+        console.log("1");
+        console.log(jsonData);
+
+        if (!jsonData.books || !Array.isArray(jsonData.books)) {
+            throw new Error("Invalid data format");
+        }
+
+        const books = document.getElementById("books");
+        books.innerHTML = ""; 
+
+        jsonData.books.forEach((book, i) => {
+            if (i % 4 === 0) {
+                books.innerHTML += "<div class='row'></div>";
+            }
+
+            const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>${book.description || "No description available"}</p><p>Price: ${book.price}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Category: ${book.cathegory}</p><p>Stock: ${book.stockAmount}</p><p>Status: ${book.status ? "Available" : "Not Available"}</p></div></div></div>`;
+            books.innerHTML += templateBook;
+        });
+
+    } catch (error) {
+        console.error("Error:", error);
+        document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`;
+    }
+
+}
+viewBooksButton.addEventListener("click", viewBooks);
+
 
 </script>
 

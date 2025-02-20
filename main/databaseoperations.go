@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"encoding/binary"
 	"golang.org/x/crypto/sha3"
@@ -24,16 +25,16 @@ type Seller struct {
 
 type Book struct {
 	BookID		int32
-	Title       string
-	SellerID    int32
-	Edition     sql.NullString
-	Description sql.NullString
-	StockAmount int32  //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
-	Available	bool //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
+	Title       string			`json:"title"`
+	SellerID    int32			`json:"sellerid"`
+	Edition     sql.NullString	`json:"edition"`
+	Description sql.NullString	`json:"description"`
+	StockAmount int32  			`json:"stockAmount"`//since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
+	Available	bool 			`json:"status"`//This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
 	ISBN		sql.NullInt32
 	NumRatings  sql.NullInt32 
 	SumRatings 	sql.NullInt32
-	Price 		sql.NullInt32
+	Price 		sql.NullInt32	`json:"price"`
 }
 func hash(plaintext string) (int64) {
 	h := sha3.New256()
@@ -277,6 +278,27 @@ func SearchBooksByTitleV2(titlesearch string) ([]Book, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("searchBooksByTitlev2 %q: %v", titlesearch, err)
 	}
+	return books, nil
+}
+
+func viewSellerBooks(sellerID int) ([]Book, error) {
+	var books []Book
+
+	rows, err := db.Query("SELECT Title, Description, Price, Edition, Cathegory, StockAmount FROM Books WHERE SellerID = ?", sellerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var book Book
+		err := rows.Scan(&book.Title, &book.Description, &book.Price, &book.Edition, &book.Cathegory, &book.StockAmount)
+		if err != nil {
+			return nil, err
+		}
+		books = append(books, book)
+	}
+
 	return books, nil
 }
 

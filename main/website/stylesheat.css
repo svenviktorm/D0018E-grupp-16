@@ -54,7 +54,7 @@ input {
     display: inline-block;
     text-align: left;
     border: 2px solid rgb(177, 177, 177);
-    border-radius: 15px;
+    border-radius: 9px;
     background-color: rgb(245, 234, 224);
     width: 230px;
     align-items: center;
@@ -100,4 +100,16 @@ h4 {
     width: 180px;
     height: 250px;
     align-content: center;
+}
+
+#viewCard {
+    display: none;
+    border-radius: 15px;
+    border: 2px solid rgb(177, 177, 177);
+    width: 500px;
+    height: 350px;
+    align-content: center;
+    position: absolute;
+    margin-top: 95px;
+    background-color: white;
 }

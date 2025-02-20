@@ -141,6 +141,74 @@ type Album struct {
 	Price  float32
 }
 
+func addBookHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var book Book
+	err := json.NewDecoder(r.Body).Decode(&book)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	//json.Unmarshal([]byte(r), &book)
+
+	id, err := AddBook(book)
+	if err != nil {
+		http.Error(w, "Failed to add book: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Printf("Received book: %+v\n", book)
+
+	//w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "success",
+		"message": "Book added successfully",
+		"id":      id,
+	})
+}
+
+func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
+	sellerId := 1
+
+	books, err := viewSellerBooks(sellerId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var formattedBooks []map[string]interface{}
+
+	for _, book := range books {
+		formattedBooks = append(formattedBooks, map[string]interface{}{
+			"title":       book.Title,
+			"sellerid":    book.SellerID,
+			"description": book.Description.String,
+			"price":       book.Price,
+			"edition":     book.Edition.String,
+			"cathegory":   book.Cathegory,
+			"stockAmount": book.StockAmount,
+			"status":      book.Status,
+		})
+	}
+
+	fmt.Printf("Books: %+v\n", formattedBooks)
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"books":  formattedBooks,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
@@ -167,6 +235,8 @@ func main() {
 	//http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	http.HandleFunc("/", viewHandler)
+	http.HandleFunc("/add_book", addBookHandler)
+	http.HandleFunc("/viewSellerBook", viewBooksBySellerHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)
