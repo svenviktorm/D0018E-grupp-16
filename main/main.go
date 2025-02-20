@@ -52,6 +52,45 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "html.html")
 }
 
+func userHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		fmt.Println("Get request to users API")
+		fmt.Println("This should be an attempt to login or similar")
+		//fmt.Println(r)
+		//r.ParseForm()
+		//fmt.Println(r.Form)
+		uname := r.FormValue("username")
+		pwd := r.FormValue("password")
+		//fmt.Printf("username:%v, password:%v\n", uname, pwd)
+		//fmt.Println(r.Form)
+
+		user, loginOK, err := LogInCheckNotHashed(uname, pwd)
+		//TODO handle server errors?
+		//fmt.Printf("login ok?:%v, userID:%v seller?:%v, admin?:%v/n", loginOK, userID, isSeller, isAdmin)
+		if err != nil {
+			//TODO error handling
+		}
+		if loginOK {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(user)
+		} else {
+			http.Error(w, "Invalid username or password", http.StatusNotFound)
+		}
+	case http.MethodPost:
+		fmt.Println("Post request to users API")
+		fmt.Println("This should be an attempt to create a user account")
+	case http.MethodDelete:
+		fmt.Println("Delete request to users API")
+		fmt.Println("This should be an attempt to remove a user account")
+	case http.MethodPut:
+		fmt.Println("Put request to users API")
+		fmt.Println("Maybe this request could be used for changing passwords? But not i API so far")
+	default:
+		fmt.Println("Unsupportet request type to users API")
+	}
+}
+
 func sendHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -77,6 +116,7 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		res = fmt.Sprintf("Hits when searching for %v: %v\n", requestData.Text, ids)
 	}
+
 	// Create response
 	response := ResponseData{Response: res}
 
@@ -125,6 +165,7 @@ func main() {
 	fmt.Println("b!")
 	http.HandleFunc("/send", sendHandler)
 	fmt.Println("c!")
+	http.HandleFunc("/API/users", userHandler)
 
 	log.Fatal(http.ListenAndServe(":80", nil))
 	fmt.Println("Server uppe!")

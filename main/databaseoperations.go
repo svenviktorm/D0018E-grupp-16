@@ -5,6 +5,15 @@ import (
 	"fmt"
 )
 
+type User struct {
+	UserID   int32
+	Username string
+	Password string
+	Email    sql.NullString
+	IsAdmin  bool
+	IsSeller bool
+}
+
 type Book struct {
 	Title       string
 	Author      string
@@ -65,7 +74,7 @@ func AddBookMin(title string, author string, sellerID int) (int64, error) {
 	nullStr := sql.NullString{
 		Valid: false,
 	}
-	var book = Book{title,author,sellerID,nullStr,nullStr,0,false}
+	var book = Book{title, author, sellerID, nullStr, nullStr, 0, false}
 	return AddBook(book)
 
 }
@@ -153,4 +162,40 @@ func DisplayBooklist(books []Book) {
 		fmt.Println("|", b.Title, "|", b.Author, "|", edition, "|", b.StockAmount, "|")
 
 	}
+}
+
+func LogInCheckNotHashed(username string, password string) (user User, loginSuccess bool, err error) {
+	//This is just a placeholder function to test the webserver part.
+	// The actual function should (preferably) use the same specification, just fix the body so it actually does something useful
+	loginSuccess = false
+	user.IsSeller = false
+	user.IsAdmin = false
+	user.UserID = -1
+	switch username {
+	case "aSeller":
+		if password == "sellerPwd" {
+			loginSuccess = true
+			user.IsSeller = true
+			user.UserID = 1
+		}
+	case "anAdmin":
+		if password == "adminPwd" {
+			loginSuccess = true
+			user.IsAdmin = true
+			user.UserID = 2
+		}
+	case "aBuyer":
+		if password == "buyerPwd" {
+			loginSuccess = true
+			user.UserID = 3
+		}
+	case "aMess":
+		if password == "messPwd" {
+			loginSuccess = true
+			user.IsAdmin = true
+			user.IsSeller = true
+			user.UserID = 4
+		}
+	}
+	return
 }
