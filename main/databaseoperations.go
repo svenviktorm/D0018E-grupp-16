@@ -146,6 +146,27 @@ func SearchBooksByTitleV2(titlesearch string) ([]Book, []int, error) {
 	return books, ids, nil
 }
 
+func viewSellerBooks(sellerID int) ([]Book, error) {
+	var books []Book
+
+	rows, err := db.Query("SELECT Title, Description, Price, Edition, Cathegory, StockAmount FROM Books WHERE SellerID = ?", sellerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var book Book
+		err := rows.Scan(&book.Title, &book.Description, &book.Price, &book.Edition, &book.Cathegory, &book.StockAmount)
+		if err != nil {
+			return nil, err
+		}
+		books = append(books, book)
+	}
+
+	return books, nil
+}
+
 func DisplayBooklist(books []Book) {
 	// just for testing purposes
 	var edition string

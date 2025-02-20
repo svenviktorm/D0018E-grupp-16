@@ -127,9 +127,39 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
-	books, ids, err2 := GetBooksBySeller(1, true)
-	fmt.Println(ids, err2)
-	DisplayBooklist(books)
+	sellerId := 1
+
+	books, err := viewSellerBooks(sellerId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var formattedBooks []map[string]interface{}
+
+	for _, book := range books {
+		formattedBooks = append(formattedBooks, map[string]interface{}{
+			"title":       book.Title,
+			"sellerid":    book.SellerID,
+			"description": book.Description.String,
+			"price":       book.Price,
+			"edition":     book.Edition.String,
+			"cathegory":   book.Cathegory,
+			"stockAmount": book.StockAmount,
+			"status":      book.Status,
+		})
+	}
+
+	fmt.Printf("Books: %+v\n", formattedBooks)
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"books":  formattedBooks,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func main() {
@@ -159,6 +189,7 @@ func main() {
 
 	http.HandleFunc("/", viewHandler)
 	http.HandleFunc("/add_book", addBookHandler)
+	http.HandleFunc("/viewSellerBook", viewBooksBySellerHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <link rel="stylesheet" href="../stylesheat.css">
     <title>Seller Page</title>
 </head>
@@ -12,6 +13,11 @@
 
 <div class="topnav">
     <a class="active" href="../start.html">Book Store</a>
+</div>
+
+<div class="row">
+    <button id="viewBooksButton">books</button>
+    <div id="books"></div>
 </div>
 
 <button id="showform">Add book</button>
@@ -41,6 +47,7 @@
 
 const button = document.getElementById("showform");
 const form = document.getElementById("addbook");
+const viewBooksButton = document.getElementById("viewBooksButton");
 
 button.addEventListener("click", function() {
     if (form.style.display === "none" || form.style.display === "") {
@@ -67,7 +74,6 @@ document.getElementById("addBookForm").addEventListener("submit", async function
     console.log("Sending book data:", JSON.stringify(book));
 
     try { 
-        console.log("0")
         const response = await fetch("/add_book", { 
             method: "POST", 
             //headers: { "Content-Type": "application/json" },
@@ -87,21 +93,50 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         console.error("Error adding book", error);
         alert("Error adding book");
     }
+}); 
 
-function addBook() {
 
-        fetch("/add_book", {
+async function viewBooks() {
+    console.log("1");
+
+    try {
+        const response = await fetch("/viewSellerBook", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ book }) // Send JSON data
-        })
-        .then(response => response.json()) // Parse JSON response
-        .then(data => {
-            document.getElementById("output").innerText = "Response: " + data.response;
-        })
-        .catch(error => console.error("Error:", error));
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        }
+
+        const jsonData = await response.json();
+        console.log("1");
+        console.log(jsonData);
+
+        if (!jsonData.books || !Array.isArray(jsonData.books)) {
+            throw new Error("Invalid data format");
+        }
+
+        const books = document.getElementById("books");
+        books.innerHTML = ""; 
+
+        jsonData.books.forEach((book, i) => {
+            if (i % 4 === 0) {
+                books.innerHTML += "<div class='row'></div>";
+            }
+
+            const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>${book.description || "No description available"}</p><p>Price: ${book.price}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Category: ${book.cathegory}</p><p>Stock: ${book.stockAmount}</p><p>Status: ${book.status ? "Available" : "Not Available"}</p></div></div></div>`;
+            books.innerHTML += templateBook;
+        });
+
+    } catch (error) {
+        console.error("Error:", error);
+        document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`;
     }
-}); 
+
+}
+viewBooksButton.addEventListener("click", viewBooks);
+
 
 </script>
 
