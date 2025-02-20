@@ -65,11 +65,12 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		uname := r.FormValue("username")
 		pwd := r.FormValue("password")
 		fmt.Printf("username:%v, password:%v, hash:%v", uname, pwd, hash(pwd))
+		fmt.Println("")
 		//fmt.Println(r.Form)
 
 		user, loginOK, err := LogInCheckNotHashed(uname, pwd)
-
-		fmt.Printf("login ok?:%v, userID:%v seller?:%v, admin?:%v ", loginOK, user.UserID, user.IsSeller, user.IsAdmin)
+		user.Password = pwd
+		fmt.Printf("login ok?:%v, username: %v userID:%v seller?:%v, admin?:%v ", loginOK,user.Username, user.UserID, user.IsSeller, user.IsAdmin)
 		
 		fmt.Println("")
 		if loginOK {

@@ -68,7 +68,7 @@ func LogInCheckNotHashed(username string, password string) (user User, loginSucc
 //for checking a username with an already hashed password
 func LoginCheck(username string, passwordHash int64) (user User, loginSucces bool, err error) {
 	
-	rows, err := db.Query("SELECT Id, IsAdmin, IsSeller FROM Users WHERE Username = ? AND PasswordHash = ? ",username,passwordHash)
+	rows, err := db.Query("SELECT Id, Email IsAdmin, IsSeller FROM Users WHERE Username = ? AND PasswordHash = ? ",username,passwordHash)
 	if err != nil {
 		var user User = User{}
 		return user , false, fmt.Errorf("LoginCheck: %v", err)
@@ -78,11 +78,12 @@ func LoginCheck(username string, passwordHash int64) (user User, loginSucces boo
 		var id int32
 		var isAdmin bool
 		var isSeller bool
-		err := rows.Scan(&id, &isAdmin, &isSeller)
+		var email sql.NullString
+		err := rows.Scan(&id,&email, &isAdmin, &isSeller)
 		if err != nil {
 			fmt.Errorf("LoginCheck: %v", err)
 		}
-		var user User = User{}
+		var user User = User{id, username, "", email, isAdmin, isSeller}
 		return user, true, err
 	}
 	if err != nil {
