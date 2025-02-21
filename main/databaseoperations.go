@@ -75,7 +75,7 @@ func LoginCheck(username string, passwordHash int64) (user User, loginSucces boo
 	rows, err := db.Query("SELECT Id, Email, IsAdmin, IsSeller FROM Users WHERE Username = ? AND PasswordHash = ? ", username, passwordHash)
 	if err != nil {
 		var user User = User{}
-		return user, false, fmt.Errorf("LoginCheck: %v", err)
+		return user, false, fmt.Errorf("LoginCheck: Queary: %v", err)
 	}
 
 	for rows.Next() {
@@ -85,15 +85,13 @@ func LoginCheck(username string, passwordHash int64) (user User, loginSucces boo
 		var email sql.NullString
 		err := rows.Scan(&id, &email, &isAdmin, &isSeller)
 		if err != nil {
-			fmt.Errorf("LoginCheck: %v", err)
+			return User{}, false, fmt.Errorf("LoginCheck: Scan: %v", err)
 		}
+		fmt.Println("id: ", id)
 		var user User = User{id, username, "", email, isAdmin, isSeller}
 		return user, true, err
 	}
-	if err != nil {
-		return User{}, false, fmt.Errorf("LoginCheck: No User found %v", err)
-	}
-	return User{}, false, fmt.Errorf("LoginCheck: No User found")
+	return User{}, false, nil
 }
 
 func AddSeller(user User, name string, description sql.NullString) (int32, error) {

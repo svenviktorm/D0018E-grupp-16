@@ -153,6 +153,7 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var book Book
+	fmt.Println("boddy: ",r.Body)
 	err := json.NewDecoder(r.Body).Decode(&book)
 	fmt.Println("Book: ", book)
 	for a, c := range r.Cookies() {
@@ -164,7 +165,6 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get cookie: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("username: @ ", 1)
 	if err != nil {
 		fmt.Println("Invalid JSON", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
