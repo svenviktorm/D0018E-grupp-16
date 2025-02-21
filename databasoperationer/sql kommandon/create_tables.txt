@@ -21,20 +21,20 @@
         PRIMARY KEY (ID)
     );
 
-    CREATE TABLE Books(
-        Id INT NOT NULL AUTO_INCREMENT,
-        Title VARCHAR(100) NOT NULL,
-        SellerId INT NOT NULL,
-        Edition VARCHAR(50),
-        Description TEXT,
-        StockAmount INT NOT NULL DEFAULT 0 CHECK (StockAmount >= 0),
-        Available BOOL NOT NULL DEFAULT FALSE,
-        ISBN INT,
-        NumRatings INT DEFAULT 0 CHECK (NumRatings >= 0),
-        SumRatings INT DEFAULT 0 CHECK (SumRatings >= 0),
-        Price INT CHECK (PRICE >= 0),
-        PRIMARY KEY (ID),
-        FOREIGN KEY (SellerID) REFERENCES Sellers(ID),
-        FULLTEXT(Title)
-    );
+CREATE TABLE Books(
+    Id INT NOT NULL AUTO_INCREMENT,
+    Title VARCHAR(100) NOT NULL,
+    SellerId INT NOT NULL,
+    Edition VARCHAR(50),
+    Description TEXT,
+    StockAmount INT NOT NULL DEFAULT 0 CHECK (StockAmount >= 0),
+    Available BOOL NOT NULL DEFAULT FALSE,
+    ISBN INT,
+    NumRatings INT DEFAULT 0 CHECK (NumRatings >= 0),
+    SumRatings INT DEFAULT 0 CHECK (SumRatings >= 0),
+    Price INT CHECK (PRICE >= 0),
+    PRIMARY KEY (ID),
+    FOREIGN KEY (SellerID) REFERENCES Sellers(ID),
+    FULLTEXT(Title)
+);
 
