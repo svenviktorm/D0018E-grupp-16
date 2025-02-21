@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -70,17 +71,19 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 
 		user, loginOK, err := LogInCheckNotHashed(uname, pwd)
 		user.Password = pwd
-		fmt.Printf("login ok?:%v, username: %v userID:%v seller?:%v, admin?:%v ", loginOK,user.Username, user.UserID, user.IsSeller, user.IsAdmin)
-		
+		fmt.Printf("login ok?:%v, username: %v userID:%v seller?:%v, admin?:%v ", loginOK, user.Username, user.UserID, user.IsSeller, user.IsAdmin)
+
 		fmt.Println("")
 		if loginOK {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(user)
 		} else {
-			//error hadeling shuld be in here
-			http.Error(w, "Invalid username or password", http.StatusNotFound)
 			if err != nil {
-
+				//http.Error(w, fmt.Printf("Some error occured: %v", err), http.StatusInternalServerError)
+				http.Error(w, "Some error occured", http.StatusInternalServerError)
+				//TODO fix this
+			} else {
+				http.Error(w, "Invalid username or password", http.StatusNotFound)
 			}
 		}
 	case http.MethodPost:
@@ -144,11 +147,10 @@ type Album struct {
 func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("addBookHandler called")
 	if r.Method != http.MethodPost {
-		fmt.Println("Invalid request method ",r.Method)
+		fmt.Println("Invalid request method ", r.Method)
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
-
 
 	var book Book
 	fmt.Println("boddy: ",r.Body)
@@ -191,7 +193,9 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewBooksBySellerHandler called")
-	sellerId := r.Header.Get("sellerid")
+	//sellerId := r.Header.Get("sellerid")
+	IDcookie, err := r.Cookie("UserID")
+	sellerId := IDcookie.Value
 	fmt.Println("sellerId: ", sellerId)
 	if sellerId == "" {
 		fmt.Println("Missing sellerid")
@@ -215,6 +219,10 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	var formattedBooks []map[string]interface{}
 
 	for _, book := range books {
+		fmt.Println("Price: ", book.Price)
+		if !book.Price.Valid {
+			book.Price = sql.NullInt32{0,true}
+		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
 			"title":       book.Title,
 			"sellerid":    book.SellerID,
@@ -243,7 +251,7 @@ func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:                 "root",
-		Passwd:               "AnkaAnka",
+		Passwd:               "SnusmumrikenVolvo8041", //"AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",
