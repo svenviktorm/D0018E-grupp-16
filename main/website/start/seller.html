@@ -100,6 +100,7 @@ async function viewBooks() {
     console.log("1");
 
     try {
+    
         const response = await fetch("/viewSellerBook", {
             method: "POST",
             headers: { "Content-Type": "application/json", "sellerid": "1" },

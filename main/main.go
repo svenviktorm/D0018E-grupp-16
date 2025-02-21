@@ -41,6 +41,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewHandler called")
 	requestPath := r.URL.Path
 	fmt.Println(requestPath)
+	fmt.Println(r.Header)
 	if requestPath == "/" {
 		http.ServeFile(w, r, "website/start.html")
 	} else {
@@ -153,7 +154,7 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var book Book
-	fmt.Println("boddy: ",r.Body)
+	fmt.Println("boddy: ", r.Body)
 	err := json.NewDecoder(r.Body).Decode(&book)
 	fmt.Println("Book: ", book)
 	for a, c := range r.Cookies() {
@@ -194,8 +195,13 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewBooksBySellerHandler called")
 	//sellerId := r.Header.Get("sellerid")
+	//cookielist := r.Cookies()
+	//fmt.Println(cookielist)
+	//fmt.Println(r)
+	//fmt.Println(r.Header)
 	IDcookie, err := r.Cookie("UserID")
 	sellerId := IDcookie.Value
+	fmt.Println(sellerId)
 	fmt.Println("sellerId: ", sellerId)
 	if sellerId == "" {
 		fmt.Println("Missing sellerid")
