@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <link rel="stylesheet" href="../stylesheat.css">
+    <title>Login Page</title>
+</head>
+<body>
+<div class="topnav">
+    <a class="active" href="../start.html">Book Store</a>
+</div>
+
+<div class="flex-container">
+    <form id="loginform" >
+        <input name="username" type="text" placeholder="username" id="login_username" maxlength="45" pattern="[A-Za-z_]{3,45}"> <br>
+        <input name="password" type="password" placeholder="password" id="login_password" autocomplete="new-password" required> <br>
+        <input type="submit" value="Submit">
+
+    </form>
+</div>
+
+<div id="loginErrortext"></div>
+<script>
+
+const form = document.querySelector("#loginform");
+
+async function sendLogin() {
+  // Associate the FormData object with the form element
+  console.log("sendLogin anropad")
+  const formData = new FormData(form);
+  
+  const searchParams= new URLSearchParams(formData)
+  try {
+    const response = await fetch("/API/users?"+searchParams, {
+      method: "GET"
+    });
+    if (response.ok){
+        const user=await response.json()
+        console.log(user)
+        console.log("kalle anka")
+        document.cookie="UserID="+user.UserID
+        document.cookie="Username="+user.Username
+        document.cookie="Password="+user.Password
+        document.cookie="IsSeller="+user.IsSeller
+        document.cookie="IsAdmin="+user.IsAdmin
+        console.log(document.cookie);
+        if (user.IsSeller){
+            console.log("going to seller page2")
+            location.replace("/start/seller.html")
+            //TODO should the userID be included in the URL? or passed along? Or should it just be fetched from the cookies?
+        } else if (user.IsAdmin) {
+            console.log("going to admin page")
+            //TODO finish this
+        } else {
+            console.log("going to buyer page")
+            location.replace("/")
+            //TODO get right outcome but with strange error messages in console, figure out if need to fix something
+        }
+        
+
+    } else if (response.status==404) {
+        document.getElementById("loginErrortext").innerText ="Login failed. Invalid username or password."
+    } else {
+        //TODO handle other errors??
+    }
+    
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// Take over form submission
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  sendLogin();
+});
+
+</script>
+
+</body>
+</html>
