@@ -47,12 +47,14 @@ func main() {
 	ids, error := AddUser("KalleAnka","1234",sql.NullString{"KalleAnka@123.com", true})
 	fmt.Println(ids, error)
 	fmt.Println("kalle")
-	user,_, errorr := LogInCheckNotHashed("Kalle Anka","1234");
+	user,_, errorr := LogInCheckNotHashed("KalleAnka","1234");
 	var userID = user.UserID
 	fmt.Println("Login: ",userID, errorr)
 
 	user, err = GetUserByID(userID)
 	user.Password = "1234"
+	//user.Username = "KalleAnkaSeller2"
+	//user.UserID = 17
 	fmt.Println("Get user: ",user,err)
 	sellerid, error := AddSeller(user,"Testseller", sql.NullString{"",false})
 	fmt.Println("addseller ",sellerid, error)

@@ -192,7 +192,7 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewBooksBySellerHandler called")
 	sellerId := r.Header.Get("sellerid")
-	fmt.Println("sellerId: ", sellerId)
+	//fmt.Println("sellerId: ", sellerId)
 	if sellerId == "" {
 		fmt.Println("Missing sellerid")
 		http.Error(w, "Missing sellerid", http.StatusBadRequest)
@@ -215,6 +215,10 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	var formattedBooks []map[string]interface{}
 
 	for _, book := range books {
+		fmt.Println("Price: ", book.Price)
+		if !book.Price.Valid {
+			book.Price = sql.NullInt32{0,true}
+		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
 			"title":       book.Title,
 			"sellerid":    book.SellerID,

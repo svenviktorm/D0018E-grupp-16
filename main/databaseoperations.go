@@ -33,7 +33,7 @@ type Book struct {
 	ISBN		sql.NullInt32
 	NumRatings  sql.NullInt32 
 	SumRatings 	sql.NullInt32
-	Price 		int32	`json:"price"`
+	Price 		sql.NullInt32	`json:"price"`
 }
 func hash(plaintext string) (int64) {
 	h := sha3.New256()
@@ -111,16 +111,19 @@ func AddSeller(user User,name string, description sql.NullString) (int32, error)
 	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
 	if err != nil {
 		tx.Rollback()
+		fmt.Println("rollback!!!!!!")
 		return -3, fmt.Errorf("AddSeller: %v", err)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
 		tx.Rollback()
+		fmt.Println("rollback!!!!!!")
 		return -4, fmt.Errorf("AddSeller: %v", err)
 	}
-	db.Exec("UPDATE users SET IsSeller = True WHERE ID = ?",user.UserID)
+	db.Exec("UPDATE Users SET IsSeller = True WHERE ID = ?",user.UserID)
 	if err != nil {
 		tx.Rollback()
+		fmt.Println("rollback!!!!!!")
 		return -5, fmt.Errorf("AddSeller: %v", err)
 	}
 	err = tx.Commit()
@@ -192,7 +195,7 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 		Int32: 0,
 	}
 	//id of -99 should not be used
-	var book = Book{-99,title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, 0}
+	var book = Book{-99,title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
 	return AddBook(book)
 
 }
@@ -200,17 +203,17 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 func AddBook(book Book) (int32, error) {
 	user, err := GetUserByID(book.SellerID)
 	if err != nil {
-		return -1, fmt.Errorf("AddSeller: %v", err)
+		return -1, fmt.Errorf("Addbook: %v", err)
 	}
 	//check if seller exists can be optimized
-	user, loginSucces ,  loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
-	if loginerr != nil  {
-		return -1, fmt.Errorf("AddSeller: %v", loginerr)
+	//user, loginSucces ,  loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
+	/*if loginerr != nil  {
+		return -1, fmt.Errorf("Addbook: %v", loginerr)
 	}
 
 	if !loginSucces {
-		return -1, fmt.Errorf("AddSeller: loginsfail %v", loginerr)
-	}
+		return -1, fmt.Errorf("Addbook: loginsfail %v", loginerr)
+	}*/
 
 	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
 	if err != nil {
