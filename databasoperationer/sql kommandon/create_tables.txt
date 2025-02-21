@@ -32,7 +32,7 @@ CREATE TABLE Books(
     ISBN INT,
     NumRatings INT DEFAULT 0 CHECK (NumRatings >= 0),
     SumRatings INT DEFAULT 0 CHECK (SumRatings >= 0),
-    Price INT CHECK (PRICE > 0),
+    Price INT CHECK (PRICE >= 0),
     PRIMARY KEY (ID),
     FOREIGN KEY (SellerID) REFERENCES Sellers(ID),
     FULLTEXT(Title)

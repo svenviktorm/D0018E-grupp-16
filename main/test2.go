@@ -17,7 +17,8 @@ func main() {
 		//or replace them with the appropriate user name and password here.
 		//(I had trouble getting it to work with setting them in the command window)
 		//(not sure how we want to do this in the end?)
-		Passwd:               "AnkaAnka",
+		Passwd: "SnusmumrikenVolvo8041",
+		//"AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",
@@ -36,38 +37,46 @@ func main() {
 	}
 	fmt.Println("Connected!")
 
+	// test add user and logincheck
+
+	ids, error := AddUser("aSeller", "sellerPwd", sql.NullString{"KalleAnka@123.com", true})
+	fmt.Println(ids, error)
+	//fmt.Println("kalle")
+	user, _, errorr := LogInCheckNotHashed("aSeller", "sellerPwd")
+	fmt.Println("user from login: ", user, err)
+	user.Password = "sellerPwd"
+	var userID = user.UserID
+	fmt.Println("Login: ", userID, errorr)
+
+	sellerid, error := AddSeller(user, "Testseller", sql.NullString{"", false})
+	fmt.Println("addseller ", sellerid, error)
+
+	user, err = GetUserByID(userID)
+	//user.Password = "1234"
+	fmt.Println("Get user: ", user, err)
+
+	sellerid = user.UserID
+
+	// test add book
+
 	var b Book
 	//fmt.Println(b)
 
 	b2 := Book{Title: "title book 1", SellerID: 1}
 	//fmt.Println(b2)
 
-	b3 := Book{Title: "testbook2", SellerID: 1, Description: sql.NullString{"a nice long description", true}, Edition: sql.NullString{"edition 1", true}, StockAmount: 3, Available: false}
+	b3 := Book{Title: "testbook2", SellerID: sellerid, Description: sql.NullString{"a nice long description", true}, Edition: sql.NullString{"edition 1", true}, StockAmount: 3, Available: false}
 	//fmt.Println(b3)
-	ids, error := AddUser("KalleAnka","1234",sql.NullString{"KalleAnka@123.com", true})
-	fmt.Println(ids, error)
-	fmt.Println("kalle")
-	user,_, errorr := LogInCheckNotHashed("Kalle Anka","1234");
-	var userID = user.UserID
-	fmt.Println("Login: ",userID, errorr)
-
-	user, err = GetUserByID(userID)
-	user.Password = "1234"
-	fmt.Println("Get user: ",user,err)
-	sellerid, error := AddSeller(user,"Testseller", sql.NullString{"",false})
-	fmt.Println("addseller ",sellerid, error)
-
-	sellerid = user.UserID
 
 	id, error := AddBookMin("book 3 title", sellerid)
-	fmt.Println("addbook ",id, error)
+	fmt.Println("addbook ", id, error)
 
 	b2.SellerID = sellerid
 	b3.SellerID = sellerid
 	b.Title = "ERROR BOK"
 	id, error = AddBook(b)
-	fmt.Println("bookid",id, error)
-
+	fmt.Println("bookid", id, error)
+	fmt.Println(b2.SellerID)
 	id, error = AddBook(b2)
 	fmt.Println(id, error)
 
@@ -76,7 +85,7 @@ func main() {
 
 	books, err2 := GetBooksBySeller(1, true)
 
-	fmt.Println("All books by seller ",sellerid," independent of status")
+	fmt.Println("All books by seller ", sellerid, " independent of status")
 	fmt.Println(sellerid, err2)
 	DisplayBooklist(books)
 
