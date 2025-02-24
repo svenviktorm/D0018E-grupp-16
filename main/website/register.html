@@ -46,11 +46,11 @@ async function sendRegister() {
         const user=await response.json()
         console.log(user)
         console.log("kalle anka")
-        document.cookie="UserID="+user.UserID
-        document.cookie="Username="+user.Username
-        document.cookie="Password="+user.Password
-        document.cookie="IsSeller="+user.IsSeller
-        document.cookie="IsAdmin="+user.IsAdmin
+        document.cookie="UserID="+user.UserID;Path=/"
+        document.cookie="Username="+user.Username;Path=/"
+        document.cookie="Password="+user.Password;Path=/"
+        document.cookie="IsSeller="+user.IsSeller;Path=/"
+        document.cookie="IsAdmin="+user.IsAdmin;Path=/"
         console.log(document.cookie);
         if (user.IsSeller){
             console.log("going to seller page2")
