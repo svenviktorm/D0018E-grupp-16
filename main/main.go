@@ -94,12 +94,15 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		pwd := r.FormValue("password")
 		email := r.FormValue("email")
+		seller := r.FormValue("seller") == "seller"
+
 		fmt.Println("username:%v, password:%v, mail:%v", username, pwd, email)
 		emailSQL := sql.NullString{email, true}
 		if email == "" {
 			emailSQL = sql.NullString{"", false}
 		}
-		id, err := AddUser(username, pwd, emailSQL)
+
+		id, err := AddUser(username, pwd, emailSQL, seller)
 		if err != nil {
 			fmt.Println("Failed to add user: ", err)
 			http.Error(w, "Failed to add user: ", http.StatusNotFound)
@@ -179,7 +182,7 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var book Book
-	fmt.Println("boddy: ",r.Body)
+	fmt.Println("boddy: ", r.Body)
 	err := json.NewDecoder(r.Body).Decode(&book)
 	fmt.Println("Book: ", book)
 	for a, c := range r.Cookies() {
@@ -247,7 +250,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	for _, book := range books {
 		fmt.Println("Price: ", book.Price)
 		if !book.Price.Valid {
-			book.Price = sql.NullInt32{0,true}
+			book.Price = sql.NullInt32{0, true}
 		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
 			"title":       book.Title,
@@ -257,6 +260,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			"edition":     book.Edition.String,
 			"stockAmount": book.StockAmount,
 			"status":      book.Available,
+			"isbn":        book.ISBN,
 		})
 	}
 

@@ -24,17 +24,17 @@ type Seller struct {
 }
 
 type Book struct {
-	BookID		int32
-	Title       string			`json:"title"`
-	SellerID    int32			`json:"sellerid"`
-	Edition     sql.NullString	`json:"edition"`
-	Description sql.NullString	`json:"description"`
-	StockAmount int32  			`json:"stockAmount"`//since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
-	Available	bool 			`json:"status"`//This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
-	ISBN		sql.NullInt32
-	NumRatings  sql.NullInt32 
-	SumRatings 	sql.NullInt32
-	Price 		sql.NullInt32	`json:"price"`
+	BookID      int32
+	Title       string         `json:"title"`
+	SellerID    int32          `json:"sellerid"`
+	Edition     sql.NullString `json:"edition"`
+	Description sql.NullString `json:"description"`
+	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
+	Available   bool           `json:"status"`      //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
+	ISBN        sql.NullInt32
+	NumRatings  sql.NullInt32
+	SumRatings  sql.NullInt32
+	Price       sql.NullInt32 `json:"price"`
 }
 
 func hash(plaintext string) int64 {
@@ -45,20 +45,37 @@ func hash(plaintext string) int64 {
 	return int64(binary.BigEndian.Uint64(hash[:8]))
 }
 
-func AddUser(username string, password string, email sql.NullString) (int32, error) {
+func AddUser(username string, password string, email sql.NullString, isSeller bool) (int32, error) {
 	fmt.Println("kalle")
 	var passwordHash int64 = hash(password)
-	result, err := db.Exec("INSERT INTO Users (username, PasswordHash, email, IsAdmin, IsSeller) VALUES (?, ?, ?, ? , ?)", username, passwordHash, email, false, false)
+	result, err := db.Exec("INSERT INTO Users (username, PasswordHash, email, IsAdmin, IsSeller) VALUES (?, ?, ?, ? , ?)", username, passwordHash, email, false, isSeller)
 	if err != nil {
 		fmt.Println("anka2")
 		return 0, fmt.Errorf("AddUser: %v", err)
 	}
+
 	id, err := result.LastInsertId()
 	if err != nil {
 		fmt.Println("anka1")
 		return 0, fmt.Errorf("AddUser: %v", err)
 	}
 	var i32 int32 = int32(id)
+
+	if isSeller == true {
+		newUser := User{
+			UserID:   i32,
+			Username: username,
+			Password: password,
+			Email:    email,
+			IsSeller: isSeller,
+			IsAdmin:  false,
+		}
+		_, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+		if err != nil {
+			fmt.Println("Error adding seller:", err)
+			return 0, fmt.Errorf("AddSeller: %v", err)
+		}
+	}
 	fmt.Println("anka")
 	return i32, nil
 }
@@ -124,7 +141,7 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 		fmt.Println("rollback!!!!!!")
 		return -4, fmt.Errorf("AddSeller: %v", err)
 	}
-	db.Exec("UPDATE Users SET IsSeller = True WHERE ID = ?",user.UserID)
+	db.Exec("UPDATE Users SET IsSeller = True WHERE ID = ?", user.UserID)
 	if err != nil {
 		tx.Rollback()
 		fmt.Println("rollback!!!!!!")
@@ -201,7 +218,7 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 		Int32: 0,
 	}
 	//id of -99 should not be used
-	var book = Book{-99,title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
+	var book = Book{-99, title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
 	return AddBook(book)
 
 }
@@ -213,7 +230,7 @@ func AddBook(book Book) (int32, error) {
 		return -1, fmt.Errorf("Addbook: %v", err)
 	}
 	//check if seller exists can be optimized
-	//user, loginSucces ,  loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
+	//user, loginSucces ,  loginerr := LogInCheckNotHashed(user.Username, user.Password )
 	/*if loginerr != nil  {
 		return -1, fmt.Errorf("Addbook: %v", loginerr)
 	}

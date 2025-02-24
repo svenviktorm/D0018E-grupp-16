@@ -28,11 +28,12 @@
             <div class="flex-container">
                 <form id="addBookForm">   
                     <input name="title" type="text" placeholder="Title" id="title"><br>
+                    <input name="author" type="text" placeholder="Author" id="author"><br>
                     <input name="description" type="text" placeholder="Description" id="description"><br>
-                    <input name="price" type="text" placeholder="Price" id="price"><br>
+                    <input name="price" type="number" placeholder="Price" id="price"><br>
                     <input name="edition" type="text" placeholder="Edition" id="edition"><br>
-                    <input name="cathegory" type="text" placeholder="Cathegory" id="cathegory"><br>
-                    <input name="stockAmount" type="text" placeholder="Stock" id="stockAmount"><br>
+                    <input name="stockAmount" type="number" placeholder="Stock" id="stockAmount"><br>
+                    <input name="isbn" type="number" placeholder="ISBN" id="isbn"><br>
                     <input type="submit" value="Submit">
                 </form>
             </div>
@@ -59,25 +60,48 @@ button.addEventListener("click", function() {
     }
 })
 
+function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+}
+
 document.getElementById("addBookForm").addEventListener("submit", async function(event) {
     event.preventDefault();  
 
-    const book = {
+    const User = {
+        username: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1],
+        password: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1]
+    }
+    const Book = {
         title: document.getElementById("title").value,
+        author: document.getElementById("author").value,
         description: {String: document.getElementById("description").value, Valid: true},
-        price: parseInt(document.getElementById("price").value, 10),
+        price: {Int32: parseInt(document.getElementById("price").value, 10), Valid: true},
         edition: {String: document.getElementById("edition").value, Valid: true},
-        cathegory: document.getElementById("cathegory").value, 
-        stockAmount: parseInt(document.getElementById("stockAmount").value, 10)
+        stockAmount: parseInt(document.getElementById("stockAmount").value, 10),
+        isbn: {Int32: parseInt(document.getElementById("isbn").value, 10), Valid: true},
+        availble: true
     };
 
-    console.log("Sending book data:", JSON.stringify(book));
+    
+    console.log(document.cookie)
+    console.log(getCookie('Username'))
+    console.log("Sending book data:", JSON.stringify(User) + JSON.stringify(Book));
 
     try { 
         const response = await fetch("/add_book", { 
             method: "POST", 
             //headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(book)
+            body: JSON.stringify(Book)
         });
 
         if (!response.ok) {
