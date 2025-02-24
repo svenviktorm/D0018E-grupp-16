@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-
+	
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -51,6 +51,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func rootHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("rootHandler called")
 	http.ServeFile(w, r, "html.html")
 }
 
@@ -89,6 +90,31 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		fmt.Println("Post request to users API")
 		fmt.Println("This should be an attempt to create a user account")
+
+		username := r.FormValue("username")
+		pwd := r.FormValue("password")
+		email := r.FormValue("email")
+		fmt.Println("username:%v, password:%v, mail:%v", username, pwd, email)
+		emailSQL := sql.NullString{email, true}
+		if email == "" {
+			emailSQL = sql.NullString{"", false}
+		}
+		id, err := AddUser(username, pwd, emailSQL)
+		if err != nil {
+			fmt.Println("Failed to add user: ", err)
+			http.Error(w, "Failed to add user: ", http.StatusNotFound)
+			return
+		}
+		user, loginOK, err := LogInCheckNotHashed(username, pwd)
+		if loginOK {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(user)
+		} else {
+			fmt.Println("Failed to create user")
+			http.Error(w, "Failed to Create user", http.StatusNotFound)
+		}
+		fmt.Println("User added with id: %v", id)
+
 	case http.MethodDelete:
 		fmt.Println("Delete request to users API")
 		fmt.Println("This should be an attempt to remove a user account")
@@ -251,7 +277,7 @@ func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:                 "root",
-		Passwd:               "SnusmumrikenVolvo8041", //"AnkaAnka",
+		Passwd:               "AnkaAnka", //"AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",

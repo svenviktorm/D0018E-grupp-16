@@ -17,7 +17,7 @@ func main() {
 		//or replace them with the appropriate user name and password here.
 		//(I had trouble getting it to work with setting them in the command window)
 		//(not sure how we want to do this in the end?)
-		Passwd: "SnusmumrikenVolvo8041",
+		Passwd: "AnkaAnka",
 		//"AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
@@ -67,11 +67,11 @@ func main() {
 
 	b3 := Book{Title: "testbook2", SellerID: sellerid, Description: sql.NullString{"a nice long description", true}, Edition: sql.NullString{"edition 1", true}, StockAmount: 3, Available: false}
 	//fmt.Println(b3)
-	ids, error := AddUser("KalleAnka","1234",sql.NullString{"KalleAnka@123.com", true})
+	ids, error = AddUser("KalleAnka","1234",sql.NullString{"KalleAnka@123.com", true})
 	fmt.Println(ids, error)
 	fmt.Println("kalle")
-	user,_, errorr := LogInCheckNotHashed("KalleAnka","1234");
-	var userID = user.UserID
+	user,_, errorr = LogInCheckNotHashed("KalleAnka","1234");
+	userID = user.UserID
 	fmt.Println("Login: ",userID, errorr)
 
 	user, err = GetUserByID(userID)
@@ -79,7 +79,7 @@ func main() {
 	//user.Username = "KalleAnkaSeller2"
 	//user.UserID = 17
 	fmt.Println("Get user: ",user,err)
-	sellerid, error := AddSeller(user,"Testseller", sql.NullString{"",false})
+	sellerid, error = AddSeller(user,"Testseller", sql.NullString{"",false})
 	fmt.Println("addseller ",sellerid, error)
 
 	sellerid = user.UserID
