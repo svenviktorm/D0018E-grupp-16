@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 	"fmt"
+	"os/user"
 
 	"golang.org/x/crypto/sha3"
 )
@@ -367,6 +368,30 @@ func SettCountInShoppingCart(user User, bookID int32, count int32) error {
 		}
 		return nil
 	}
+}
+
+func getShoppingChartBooks(user User) (books book[], counts int32[], error) {
+	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
+	if err != nil || !successLogin {
+		return nil, nil, fmt.Errorf("nvalid User/login invalid: %v", err)
+	}
+	rows, err := db.Query("SELECT BookID, Quantity FROM InShoppingCart WHERE UserID = ?", user.UserID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("getShoppingChartBooks: %v", err)
+	}
+	var books []Book
+	var counts []int32
+	for rows.Next() {
+		var bookID int32
+		var count int32
+		err := rows.Scan(&bookID, &count)
+		if err != nil {
+			return nil, nil, fmt.Errorf("getShoppingChartBooks: %v", err)
+		}
+		books = append(books, bookID)
+		counts = append(counts, count)
+	}
+	return books, counts, nil
 }
 
 func DisplayBooklist(books []Book) {
