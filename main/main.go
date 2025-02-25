@@ -373,12 +373,11 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Printf("Book removed from cart")
-	}
 	case http.MethodPut:
 		fmt.Println("Put request to shoppingcart API")
 		fmt.Println("This should be an attempt to change the count of a book in the shopping cart")
 		user, err := getUserFromCookies(r)
-		if err != nil {	
+		if err != nil {
 			fmt.Println("Failed to get user: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -398,15 +397,15 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid count", http.StatusBadRequest)
 			return
 		}
-		newCount, err := SettCountInShoppingCart(user, int32(bookIDint), int32(countInt))
+		err = SettCountInShoppingCart(user, int32(bookIDint), int32(countInt))
 		if err != nil {
 			fmt.Println("Failed to set count in cart: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		fmt.Printf("Book count set to: %v", newCount)
 	default:
 		fmt.Println("Unsupportet request type to shoppingcart API")
+	}
 }
 
 func main() {
