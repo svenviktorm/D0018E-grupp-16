@@ -183,8 +183,19 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	var book Book
 	fmt.Println("boddy: ", r.Body)
+
+	//username := r.FormValue("username")
+	//password := r.FormValue("password")
+	//seller := r.FormValue("email")
+
 	err := json.NewDecoder(r.Body).Decode(&book)
-	fmt.Println("Book: ", book)
+	IDcookie, err := r.Cookie("UserID")
+	var sellerId string = IDcookie.Value
+
+	SellerIDint, err := strconv.Atoi(sellerId)
+	fmt.Println(SellerIDint)
+	book.SellerID = int32(SellerIDint)
+	fmt.Println("Book: ", book.SellerID)
 	for a, c := range r.Cookies() {
 		fmt.Println(c, " | ", a)
 	}
@@ -201,8 +212,9 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//json.Unmarshal([]byte(r), &book)
-
+	fmt.Println(book)
 	id, err := AddBook(book)
+
 	if err != nil {
 		fmt.Println("Failed to add book: ", err)
 		http.Error(w, "Failed to add book: "+err.Error(), http.StatusInternalServerError)

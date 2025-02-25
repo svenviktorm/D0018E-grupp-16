@@ -81,7 +81,9 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         username: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1],
         password: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1]
     }
+    console.log(getCookie("SellerID"))
     const Book = {
+        sellerId: getCookie("SellerID"),
         title: document.getElementById("title").value,
         author: document.getElementById("author").value,
         description: {String: document.getElementById("description").value, Valid: true},
@@ -92,7 +94,7 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         availble: true
     };
 
-    
+    console.log(getCookie(""))
     console.log(document.cookie)
     console.log(getCookie('Username'))
     console.log("Sending book data:", JSON.stringify(User) + JSON.stringify(Book));
