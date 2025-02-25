@@ -309,14 +309,14 @@ func viewSellerBooks(sellerID int) ([]Book, error) {
 	return books, nil
 }
 
-func AddBookToShoppingCart(user User, bookID int32, count int32) error {
+func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount i32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
 	if err != nil || !successLogin {
-		return fmt.Errorf("Invalid User: %v", err)
+		return -1, fmt.Errorf("Invalid User: %v", err)
 	}
 	rows, err := db.Query("SELECT Quantity FROM InShoppingCart WHERE UserID = ? AND BookID = ?", user.UserID, bookID)
 	if err != nil {
-		return fmt.Errorf("AddBookToShoppingCart: %v", err)
+		return -1, fmt.Errorf("AddBookToShoppingCart: %v", err)
 	}
 	var quantity int32 = 0
 	// first has double meaning as either the first insert of this column of check if there are multiple columns
@@ -325,23 +325,45 @@ func AddBookToShoppingCart(user User, bookID int32, count int32) error {
 		if first {
 			err := rows.Scan(&quantity)
 			if err != nil {
-				return fmt.Errorf("AddBookToShoppingCart1: %v", err)
+				return -quantity, fmt.Errorf("AddBookToShoppingCart1: %v", err)
 			}
 			first = false
 		} else {
-			return fmt.Errorf("AddBookToShoppingCart: More than one row returned")
+			return -quantity, fmt.Errorf("AddBookToShoppingCart: More than one row returned")
 		}
 	}
 	if first {
 		_, err := db.Exec("INSERT INTO InShoppingCart (UserID, BookID, Quantity) VALUES (?, ?, ?)", user.UserID, bookID, count)
 		if err != nil {
-			return fmt.Errorf("AddBookToShoppingCart2: %v", err)
+			return count, fmt.Errorf("AddBookToShoppingCart2: %v", err)
 		}
-		return nil
+		return count, nil
 	} else {
 		_, err := db.Exec("UPDATE InShoppingCart SET Quantity = ? WHERE UserID = ? AND BookID = ?", quantity+count, user.UserID, bookID)
 		if err != nil {
-			return fmt.Errorf("AddBookToShoppingCart3: %v", err)
+			return quantity + count, fmt.Errorf("AddBookToShoppingCart3: %v", err)
+		}
+		return quantity + count, nil
+	}
+}
+
+// can be used to remove a book from the shopping cart
+// if count is set to 0 the book will be removed from the shopping cart
+func SettCountInShoppingCart(user User, bookID int32, count int32) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("Invalid User/login invalid: %v", err)
+	}
+	if count != 0 {
+		_, err = db.Exec("UPDATE InShoppingCart SET Quantity = ? WHERE UserID = ? AND BookID = ?", count, user.UserID, bookID)
+		if err != nil {
+			return fmt.Errorf("SettCountInShoppingCart1: %v", err)
+		}
+		return nil
+	} else {
+		_, err = db.Exec("DELETE FROM InShoppingCart WHERE UserID = ? AND BookID = ?", user.UserID, bookID)
+		if err != nil {
+			return fmt.Errorf("SettCountInShoppingCart2: %v", err)
 		}
 		return nil
 	}
