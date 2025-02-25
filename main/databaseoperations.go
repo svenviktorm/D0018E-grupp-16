@@ -188,7 +188,7 @@ func GetBooksBySeller(sellerID int, includeAvailable bool) ([]Book, error) {
 }
 
 // creates a book from minimal information
-func AddBookMin(title string, sellerID int32) (int32, error) {
+func AddBookMin(title string, sellerID int32, sellerPassword string) (int32, error) {
 	nullStr := sql.NullString{
 		Valid: false,
 	}
@@ -201,21 +201,21 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 		Int32: 0,
 	}
 	//id of -99 should not be used
-	var book = Book{-99,title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
-	return AddBook(book)
+	var book = Book{-99, title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
+	return AddBook(book, sellerPassword)
 
 }
 
 // will not use the id of the book but create one
-func AddBook(book Book) (int32, error) {
+func AddBook(book Book, sellerPassword string) (int32, error) {
 	user, err := GetUserByID(book.SellerID)
 	if err != nil {
 		return -1, fmt.Errorf("Addbook: %v", err)
 	}
 	//check if seller exists can be optimized
-	//user, loginSucces ,  loginerr := LogInCheckNotHashed(user.Username, user.Password ) 
-	/*if loginerr != nil  {
-		return -1, fmt.Errorf("Addbook: %v", loginerr)
+	user, loginSucces, loginerr := LogInCheckNotHashed(user.Username, userPassword)
+	if loginerr != nil {
+		return -1, fmt.Errorf("AddSeller: %v", loginerr)
 	}
 
 	if !loginSucces {
