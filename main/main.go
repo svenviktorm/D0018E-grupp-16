@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	
+
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -95,9 +95,9 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		pwd := r.FormValue("password")
 		email := r.FormValue("email")
 		fmt.Println("username:%v, password:%v, mail:%v", username, pwd, email)
-		emailSQL := sql.NullString{email, true}
+		emailSQL := sql.NullString{String: email, Valid: true}
 		if email == "" {
-			emailSQL = sql.NullString{"", false}
+			emailSQL = sql.NullString{String: "", Valid: false}
 		}
 		id, err := AddUser(username, pwd, emailSQL)
 		if err != nil {
@@ -179,7 +179,7 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var book Book
-	fmt.Println("boddy: ",r.Body)
+	fmt.Println("boddy: ", r.Body)
 	err := json.NewDecoder(r.Body).Decode(&book)
 	fmt.Println("Book: ", book)
 	for a, c := range r.Cookies() {
@@ -220,22 +220,14 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewBooksBySellerHandler called")
 	//sellerId := r.Header.Get("sellerid")
-	IDcookie, err := r.Cookie("UserID")
-	sellerId := IDcookie.Value
-	fmt.Println("sellerId: ", sellerId)
-	if sellerId == "" {
-		fmt.Println("Missing sellerid")
-		http.Error(w, "Missing sellerid", http.StatusBadRequest)
-		return
-	}
-	sellerIdint, err := strconv.Atoi(sellerId)
+	user, err := getUserFromCookies(r)
 	if err != nil {
-		fmt.Println("Invalid sellerid")
-		http.Error(w, "Invalid sellerid", http.StatusBadRequest)
+		fmt.Println("Failed to get user: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	books, err := viewSellerBooks(sellerIdint)
+	books, err := ViewSellerBooks(user.UserID)
 	if err != nil {
 		fmt.Println("Failed to get books: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -247,7 +239,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	for _, book := range books {
 		fmt.Println("Price: ", book.Price)
 		if !book.Price.Valid {
-			book.Price = sql.NullInt32{0,true}
+			book.Price = sql.NullInt32{0, true}
 		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
 			"title":       book.Title,
@@ -270,6 +262,155 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("Failed to encode response: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("shoppingCartHandler called")
+	switch r.Method {
+	case http.MethodGet:
+		fmt.Println("Get request to shoppingcart API")
+		fmt.Println("This should be an attempt to view the shopping cart")
+
+		user, err := getUserFromCookies(r)
+		if err != nil {
+			fmt.Println("Failed to get user: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		books, ids, err := GetShoppingChartBooks(user)
+		if err != nil {
+			fmt.Println("Failed to get cart: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var formattedBooks []map[string]interface{}
+		i := 0
+		for _, book := range books {
+			fmt.Println("Price: ", book.Price)
+			if !book.Price.Valid {
+				book.Price = sql.NullInt32{Int32: 0, Valid: true}
+			}
+			formattedBooks = append(formattedBooks, map[string]interface{}{
+				"title":       book.Title,
+				"sellerid":    book.SellerID,
+				"description": book.Description.String,
+				"price":       book.Price,
+				"edition":     book.Edition.String,
+				"stockAmount": book.StockAmount,
+				"status":      book.Available,
+				"count":       ids[i],
+			})
+			i++
+		}
+
+		fmt.Printf("Books: %+v\n", formattedBooks)
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "success",
+			"books":  formattedBooks,
+		})
+		if err != nil {
+			fmt.Println("Failed to encode response: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+	case http.MethodPost:
+		fmt.Println("Post request to shoppingcart API")
+		fmt.Println("This should be an attempt to add a book to the shopping cart")
+
+		user, err := getUserFromCookies(r)
+		if err != nil {
+			fmt.Println("Failed to get user: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		bookID := r.FormValue("bookID")
+		count := r.FormValue("count")
+		fmt.Println("bookID:%v, count:%v", bookID, count)
+		bookIDint, err := strconv.Atoi(bookID)
+		if err != nil {
+			fmt.Println("Invalid bookID")
+			http.Error(w, "Invalid bookID", http.StatusBadRequest)
+			return
+		}
+		countInt, err := strconv.Atoi(count)
+		if err != nil {
+			fmt.Println("Invalid count")
+			http.Error(w, "Invalid count", http.StatusBadRequest)
+			return
+		}
+		newCount, err := AddBookToShoppingCart(user, int32(bookIDint), int32(countInt))
+		if err != nil {
+			fmt.Println("Failed to add to cart: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("Book added to cart with count: %v", newCount, "former: ", count)
+	case http.MethodDelete:
+		fmt.Println("Delete request to shoppingcart API")
+		fmt.Println("This should be an attempt to remove a book from the shopping cart")
+		user, err := getUserFromCookies(r)
+		if err != nil {
+			fmt.Println("Failed to get user: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		deleatAll := r.FormValue("deleateAll")
+		if deleatAll == "True" {
+			err = ResetShoppingCart(user)
+			fmt.Println("Removed all book from cart")
+		} else {
+			bookID := r.FormValue("bookID")
+			fmt.Println("bookID:%v", bookID)
+			bookIDint, err := strconv.Atoi(bookID)
+			if err != nil {
+				fmt.Println("Invalid bookID")
+				http.Error(w, "Invalid bookID", http.StatusBadRequest)
+				return
+			}
+			err = SettCountInShoppingCart(user, int32(bookIDint), 0)
+			if err != nil {
+				fmt.Println("Failed to remove from cart: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Printf("Book removed from cart")
+		}
+	case http.MethodPut:
+		fmt.Println("Put request to shoppingcart API")
+		fmt.Println("This should be an attempt to change the count of a book in the shopping cart")
+		user, err := getUserFromCookies(r)
+		if err != nil {
+			fmt.Println("Failed to get user: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		bookID := r.FormValue("bookID")
+		count := r.FormValue("count")
+		fmt.Println("bookID:%v, count:%v", bookID, count)
+		bookIDint, err := strconv.Atoi(bookID)
+		if err != nil {
+			fmt.Println("Invalid bookID")
+			http.Error(w, "Invalid bookID", http.StatusBadRequest)
+			return
+		}
+		countInt, err := strconv.Atoi(count)
+		if err != nil {
+			fmt.Println("Invalid count")
+			http.Error(w, "Invalid count", http.StatusBadRequest)
+			return
+		}
+		err = SettCountInShoppingCart(user, int32(bookIDint), int32(countInt))
+		if err != nil {
+			fmt.Println("Failed to set count in cart: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	default:
+		fmt.Println("Unsupportet request type to shoppingcart API")
 	}
 }
 
@@ -308,7 +449,44 @@ func main() {
 	http.HandleFunc("/send", sendHandler)
 	fmt.Println("c!")
 	http.HandleFunc("/API/users", userHandler)
-
+	http.HandleFunc("/API/shoppingcart", shoppingCartHandler)
 	log.Fatal(http.ListenAndServe(":80", nil))
 	fmt.Println("Server uppe!")
+}
+
+func getUserFromCookies(r *http.Request) (User, error) {
+	IDcookie, err := r.Cookie("UserID")
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		return User{}, err
+	}
+	userIDstr := IDcookie.Value
+	if userIDstr == "" {
+		fmt.Println("Missing userID")
+		return User{}, fmt.Errorf("Missing userID")
+	}
+	userIDint, err := strconv.Atoi(userIDstr)
+	if err != nil {
+		fmt.Println("Invalid userID")
+		return User{}, fmt.Errorf("Invalid userID")
+	}
+	user, err := GetUserByID(int32(userIDint))
+	if err != nil {
+		fmt.Println("Failed to get user: ", err)
+		return User{}, err
+	}
+	userPsw, err := r.Cookie("Password")
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		return User{}, err
+	}
+	user.Password = userPsw.Value
+	username, err := r.Cookie("Username")
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		return User{}, err
+	}
+	user.Username = username.Value
+
+	return user, nil
 }
