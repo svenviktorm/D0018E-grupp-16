@@ -358,21 +358,27 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		bookID := r.FormValue("bookID")
-		fmt.Println("bookID:%v", bookID)
-		bookIDint, err := strconv.Atoi(bookID)
-		if err != nil {
-			fmt.Println("Invalid bookID")
-			http.Error(w, "Invalid bookID", http.StatusBadRequest)
-			return
+		deleatAll := r.FormValue("deleateAll")
+		if deleatAll == "True" {
+			err = ResetShoppingCart(user)
+			fmt.Println("Removed all book from cart")
+		} else {
+			bookID := r.FormValue("bookID")
+			fmt.Println("bookID:%v", bookID)
+			bookIDint, err := strconv.Atoi(bookID)
+			if err != nil {
+				fmt.Println("Invalid bookID")
+				http.Error(w, "Invalid bookID", http.StatusBadRequest)
+				return
+			}
+			err = SettCountInShoppingCart(user, int32(bookIDint), 0)
+			if err != nil {
+				fmt.Println("Failed to remove from cart: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Printf("Book removed from cart")
 		}
-		err = SettCountInShoppingCart(user, int32(bookIDint), 0)
-		if err != nil {
-			fmt.Println("Failed to remove from cart: ", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		fmt.Printf("Book removed from cart")
 	case http.MethodPut:
 		fmt.Println("Put request to shoppingcart API")
 		fmt.Println("This should be an attempt to change the count of a book in the shopping cart")

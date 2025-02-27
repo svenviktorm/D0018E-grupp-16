@@ -369,6 +369,15 @@ func SettCountInShoppingCart(user User, bookID int32, count int32) error {
 	}
 }
 
+func ResetShoppingCart(user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("Invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("DELETE FROM InShoppingCart WHERE UserID = ? ", user.UserID)
+	return err
+}
+
 func GetShoppingChartBooks(user User) ([]Book, []int32, error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
 	if err != nil || !successLogin {
