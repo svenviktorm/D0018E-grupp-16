@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="../stylesheat.css">
+    <title>User page</title>
+</head>
+
+<body>
+
+<div id="center">
+    <div class="topnav">
+        <a class="active" href="../start.html">Book Store</a>
+        <a class="active" href="../register.html">Register</a>
+    </div>
+</div>
+
+
+
+<div class="row">
+    <div class="column">
+      <div class="card" id="userInfoCard">
+        <button id="orders">Orders</button><br>
+        <button id="changeEmail">Change email</button>
+        <form id="viewForm">
+            <input name="changeEmail" type="email" placeholder="New email" id="inputChangeEmail" required><br>
+            <input id="submitChangeEmail" type="submit" value="Submit">
+        </form>
+        <button id="sellerButton" type="submit">Become seller</button></div>
+      </div>
+    </div>
+</div>
+
+<div>
+    <p>Shopping cart:</p>
+</div>
+
+<script>
+
+function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+}
+
+document.getElementById("sellerButton").addEventListener("submit", async function(event) {
+    console.log("selerButton pressed")
+    if (getCookie("IsSeller") == false) {
+        try {
+            const response = await fetch("/changeToSeller", {
+                    method: "POST",
+                    body: "IsSeller=true",
+                });
+            if (response.ok){
+                const user=await response.json()
+                document.cookie="IsSeller="+true
+                alert("You are now a seller")
+                console.log("isSeller request")
+                
+            } else {
+                console.log("error changing to seller")
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    } else {
+        alert("You already are a seller")
+    }
+}) 
+
+const button = document.getElementById("changeEmail");
+const form = document.getElementById("viewForm");
+
+button.addEventListener("click", function() {
+    if (form.style.display === "none" || form.style.display === "") {
+        form.style.display = "block";
+        button.textContent  = "Back"
+    } else {
+        form.style.display = "none";
+        button.textContent  = "Change email"
+    }
+})
+
+document.getElementById("viewForm").addEventListener("submit", async function(event) { 
+const form = document.querySelector("#viewForm");
+  const formData = new FormData(form);
+  
+  const searchParams= new URLSearchParams(formData)
+  try {
+    const response = await fetch("/email", {
+            method: "POST",
+            body: searchParams,
+        });
+    if (response.ok){
+        const user=await response.json()
+        document.cookie="Email="+user.Email
+        alert("Email updated successfully")
+        console.log("email request")
+    } else {
+        console.log("error changing email")
+    }
+    
+  } catch (error) {
+    console.error(error);
+  }
+})    
+</script>
+
+</body>
+</html
+

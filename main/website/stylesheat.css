@@ -98,7 +98,7 @@ h4 {
     border-radius: 15px;
     border: 2px solid rgb(177, 177, 177);
     width: 180px;
-    height: 250px;
+    height: auto;
     align-content: center;
 }
 
@@ -112,4 +112,48 @@ h4 {
     position: absolute;
     margin-top: 95px;
     background-color: white;
+}
+
+#viewForm {
+    display: none;
+}
+
+#userInfoCard {
+    border-radius: 15px;
+    border: 2px solid rgb(177, 177, 177);
+    width: 120px;
+    height: auto;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 10px;
+}
+
+button {
+    margin-top: 10px;
+    border-radius: 10px;
+    border: 2px solid rgb(177, 177, 177);
+}
+
+#submitChangeEmail {
+    border-radius: 10px;
+    border: 2px solid rgb(177, 177, 177);
+}
+
+#inputChangeEmail {
+    border-radius: 10px;
+    border: 2px solid rgb(177, 177, 177);
+    width: 90px;
+    margin-top: 10px;
+}
+
+#orders {
+    margin-top: -10px;
+}
+
+textarea {
+    width: 140px;
+}
+
+#title {
+    margin-top: 10px;
 }
