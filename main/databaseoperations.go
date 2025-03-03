@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 	"fmt"
+	"slices"
 
 	"golang.org/x/crypto/sha3"
 )
@@ -112,7 +113,7 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 	if dberr != nil {
 		return -2, fmt.Errorf("transaction erroor:", dberr)
 	}
-	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
+	result, err := tx.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
 	if err != nil {
 		tx.Rollback()
 		fmt.Println("rollback!!!!!!")
@@ -124,7 +125,7 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 		fmt.Println("rollback!!!!!!")
 		return -4, fmt.Errorf("AddSeller: %v", err)
 	}
-	db.Exec("UPDATE Users SET IsSeller = True WHERE ID = ?", user.UserID)
+	tx.Exec("UPDATE Users SET IsSeller = True WHERE ID = ?", user.UserID)
 	if err != nil {
 		tx.Rollback()
 		fmt.Println("rollback!!!!!!")
@@ -434,4 +435,124 @@ func GetBookById(bookID int32) (Book, error) {
 		}
 	}
 	return book, nil
+}
+
+// enum for orderStatus
+const (
+	OrderStatusReserved  = "reserved"
+	OrderStatusConfirmed = "confirmed"
+	OrderStatusPayed     = "payed"
+	OrderStatusSent      = "sent"
+	OrderStatusCanceled  = "canceled"
+	OrderStatusReturned  = "returned"
+)
+
+// enum for paymentMethod
+const (
+	paymentMethodInvoice = "invoice"
+	paymentMethodCard    = "card"
+)
+
+func MakeShoppingCartIntoOrderReserved(user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	tx, dberr := db.Begin()
+	if dberr != nil {
+		return fmt.Errorf("transaction erroor:", dberr)
+	}
+	rows, err := db.Query("SELECT BookID FROM InShoppingCart WHERE UserID = ?", user.UserID)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("MakeShoppingCartIntoOrder1: %v", err)
+	}
+	sellers := []int32{}
+	for rows.Next() {
+		var bookID int32
+		err := rows.Scan(&bookID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder2: %v", err)
+		}
+		rows, err := db.Query("SELECT SellerID FROM Books WHERE Id = ?", bookID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder3: %v", err)
+		}
+		var sellerID int32
+		for rows.Next() {
+			err := rows.Scan(&sellerID)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)
+			}
+		}
+		if !slices.Contains(sellers, sellerID) {
+			sellers = append(sellers, sellerID)
+		}
+	}
+
+	for rows.Next() {
+		var sellerID int32
+		err := rows.Scan(&sellerID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder2: %v", err)
+		}
+		sellers = append(sellers, sellerID)
+	}
+	for _, sellerID := range sellers {
+		rows, err := db.Query("SELECT BookID, Quantity FROM InShoppingCart WHERE UserID = ?", user.UserID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder3: %v", err)
+		}
+		_, err = tx.Exec("INSERT INTO Orders (SellerID, CustomerID, Status) VALUES (?, ?, ?)", sellerID, user.UserID, OrderStatusReserved)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)
+		}
+		for rows.Next() {
+			var bookID int32
+			var quantity int32
+			err := rows.Scan(&bookID, &quantity)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)
+			}
+			prices, err := db.Query("SELECT Price, Available FROM Books WHERE Id = ?", bookID)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("MakeShoppingCartIntoOrder5: %v", err)
+			}
+			var price sql.NullInt32
+			var available bool
+			for prices.Next() {
+				err := prices.Scan(&price, &available)
+
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("MakeShoppingCartIntoOrder6: %v", err)
+				}
+				if !available {
+					tx.Rollback()
+					return fmt.Errorf("MakeShoppingCartIntoOrderBook not available")
+				}
+			}
+			_, err = tx.Exec("INSERT INTO Orders_books (OrderID, BookID, Price ,Quantity) VALUES (LAST_INSERT_ID(), ? ,?, ?)", bookID, price, quantity)
+			if err != nil {
+
+				tx.Rollback()
+				return fmt.Errorf("MakeShoppingCartIntoOrder7: %v", err)
+			}
+			_, err = tx.Exec("UPDATE Books SET StockAmount = StockAmount - ? WHERE Id = ?", quantity, bookID)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("MakeShoppingCartIntoOrder8: %v", err)
+			}
+		}
+	}
+	tx.Commit()
+	return nil
 }
