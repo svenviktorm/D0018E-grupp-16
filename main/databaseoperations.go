@@ -34,7 +34,7 @@ type Book struct {
 	ISBN        sql.NullInt32
 	NumRatings  sql.NullInt32
 	SumRatings  sql.NullInt32
-	Price       int32 `json:"price"`
+	Price       sql.NullInt32 `json:"price"`
 }
 
 func hash(plaintext string) int64 {
@@ -115,16 +115,19 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
 	if err != nil {
 		tx.Rollback()
+		fmt.Println("rollback!!!!!!")
 		return -3, fmt.Errorf("AddSeller: %v", err)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
 		tx.Rollback()
+		fmt.Println("rollback!!!!!!")
 		return -4, fmt.Errorf("AddSeller: %v", err)
 	}
 	db.Exec("UPDATE Users SET IsSeller = True WHERE ID = ?", user.UserID)
 	if err != nil {
 		tx.Rollback()
+		fmt.Println("rollback!!!!!!")
 		return -5, fmt.Errorf("AddSeller: %v", err)
 	}
 	err = tx.Commit()
@@ -198,29 +201,28 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 		Int32: 0,
 	}
 	//id of -99 should not be used
-	var book = Book{-99, title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, 0}
+	var book = Book{-99, title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
 	return AddBook(book)
 
 }
 
 // will not use the id of the book but create one
 func AddBook(book Book) (int32, error) {
-	/*
-		user, err := GetUserByID(book.SellerID)
-		if err != nil {
-			return -1, fmt.Errorf("AddSeller: %v", err)
-		}
-		//check if seller exists can be optimized
-		user, loginSucces, loginerr := LogInCheckNotHashed(user.Username, user.Password)
-		if loginerr != nil {
-			return -1, fmt.Errorf("AddSeller: %v", loginerr)
-		}
+	user, err := GetUserByID(book.SellerID)
+	if err != nil {
+		return -1, fmt.Errorf("Addbook: %v", err)
+	}
+	//check if seller exists can be optimized
+	//user, loginSucces ,  loginerr := LogInCheckNotHashed(user.Username, user.Password )
+	/*if loginerr != nil  {
+		return -1, fmt.Errorf("Addbook: %v", loginerr)
+	}
 
-		if !loginSucces {
-			return -1, fmt.Errorf("AddSeller: loginsfail %v", loginerr)
-		}
-	*/
-	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.SellerID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
+	if !loginSucces {
+		return -1, fmt.Errorf("Addbook: loginsfail %v", loginerr)
+	}*/
+
+	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
 	if err != nil {
 		return -1, fmt.Errorf("addBook: %v", err)
 	}
@@ -286,7 +288,7 @@ func SearchBooksByTitleV2(titlesearch string) ([]Book, error) {
 	return books, nil
 }
 
-func viewSellerBooks(sellerID int) ([]Book, error) {
+func ViewSellerBooks(sellerID int32) ([]Book, error) {
 	var books []Book
 
 	rows, err := db.Query("SELECT Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings FROM Books WHERE SellerID = ?", sellerID)
@@ -307,6 +309,103 @@ func viewSellerBooks(sellerID int) ([]Book, error) {
 	return books, nil
 }
 
+func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
+	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
+	if err != nil || !successLogin {
+		return -1, fmt.Errorf("Invalid User: %v", err)
+	}
+	rows, err := db.Query("SELECT Quantity FROM InShoppingCart WHERE UserID = ? AND BookID = ?", user.UserID, bookID)
+	if err != nil {
+		return -1, fmt.Errorf("AddBookToShoppingCart: %v", err)
+	}
+	var quantity int32 = 0
+	// first has double meaning as either the first insert of this column of check if there are multiple columns
+	first := true
+	for rows.Next() {
+		if first {
+			err := rows.Scan(&quantity)
+			if err != nil {
+				return -quantity, fmt.Errorf("AddBookToShoppingCart1: %v", err)
+			}
+			first = false
+		} else {
+			return -quantity, fmt.Errorf("AddBookToShoppingCart: More than one row returned")
+		}
+	}
+	if first {
+		_, err := db.Exec("INSERT INTO InShoppingCart (UserID, BookID, Quantity) VALUES (?, ?, ?)", user.UserID, bookID, count)
+		if err != nil {
+			return count, fmt.Errorf("AddBookToShoppingCart2: %v", err)
+		}
+		return count, nil
+	} else {
+		_, err := db.Exec("UPDATE InShoppingCart SET Quantity = ? WHERE UserID = ? AND BookID = ?", quantity+count, user.UserID, bookID)
+		if err != nil {
+			return quantity + count, fmt.Errorf("AddBookToShoppingCart3: %v", err)
+		}
+		return quantity + count, nil
+	}
+}
+
+// can be used to remove a book from the shopping cart
+// if count is set to 0 the book will be removed from the shopping cart
+func SettCountInShoppingCart(user User, bookID int32, count int32) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("Invalid User/login invalid: %v", err)
+	}
+	if count != 0 {
+		_, err = db.Exec("UPDATE InShoppingCart SET Quantity = ? WHERE UserID = ? AND BookID = ?", count, user.UserID, bookID)
+		if err != nil {
+			return fmt.Errorf("SettCountInShoppingCart1: %v", err)
+		}
+		return nil
+	} else {
+		_, err = db.Exec("DELETE FROM InShoppingCart WHERE UserID = ? AND BookID = ?", user.UserID, bookID)
+		if err != nil {
+			return fmt.Errorf("SettCountInShoppingCart2: %v", err)
+		}
+		return nil
+	}
+}
+
+func ResetShoppingCart(user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("Invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("DELETE FROM InShoppingCart WHERE UserID = ? ", user.UserID)
+	return err
+}
+
+func GetShoppingChartBooks(user User) ([]Book, []int32, error) {
+	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
+	if err != nil || !successLogin {
+		return nil, nil, fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	rows, err := db.Query("SELECT BookID, Quantity FROM InShoppingCart WHERE UserID = ?", user.UserID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("getShoppingChartBooks1: %v", err)
+	}
+	var books []Book
+	var counts []int32
+	for rows.Next() {
+		var bookID int32
+		var count int32
+		err := rows.Scan(&bookID, &count)
+		if err != nil {
+			return nil, nil, fmt.Errorf("getShoppingChartBooks2: %v", err)
+		}
+		book, err := GetBookById(bookID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("getShoppingChartBooks3: %v", err)
+		}
+		books = append(books, book)
+		counts = append(counts, count)
+	}
+	return books, counts, nil
+}
+
 func DisplayBooklist(books []Book) {
 	// just for testing purposes
 	var edition string
@@ -320,4 +419,19 @@ func DisplayBooklist(books []Book) {
 		fmt.Println("|", b.Title, "|", edition, "|", b.StockAmount, "|")
 
 	}
+}
+
+func GetBookById(bookID int32) (Book, error) {
+	rows, err := db.Query("SELECT Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
+	if err != nil {
+		return Book{}, fmt.Errorf("getBookById1: %v", err)
+	}
+	var book Book
+	for rows.Next() {
+		err := rows.Scan(&book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
+		if err != nil {
+			return Book{}, fmt.Errorf("getBookById2: %v", err)
+		}
+	}
+	return book, nil
 }

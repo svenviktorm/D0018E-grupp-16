@@ -1,6 +1,7 @@
     DROP TABLE IF EXISTS Books;
     DROP TABLE IF EXISTS Sellers;
     DROP TABLE IF EXISTS Users;
+    DROP TABLE IF EXISTS InShoppingCart;
 
     CREATE TABLE Users(
         Id INT NOT NULL AUTO_INCREMENT,
@@ -38,3 +39,11 @@ CREATE TABLE Books(
     FULLTEXT(Title)
 );
 
+CREATE TABLE InShoppingCart(
+    UserID INT NOT NULL,
+    BookID INT NOT NULL,
+    Quantity INT NOT NULL CHECK (Quantity > 0),
+    PRIMARY KEY (UserID,BookID),
+    FOREIGN KEY (UserID) REFERENCES Users(Id),
+    FOREIGN KEY (BookID) REFERENCES Books(Id)
+);
