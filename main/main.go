@@ -267,14 +267,6 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	var book Book
 	fmt.Println("boddy: ", r.Body)
-<<<<<<< HEAD
-=======
-
-	//username := r.FormValue("username")
-	//password := r.FormValue("password")
-	//seller := r.FormValue("email")
-
->>>>>>> userpage
 	err := json.NewDecoder(r.Body).Decode(&book)
 	if err != nil {
 		return
@@ -373,7 +365,6 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-<<<<<<< HEAD
 func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("shoppingCartHandler called")
 	switch r.Method {
@@ -527,7 +518,6 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 var db *sql.DB
 
 // **** MAIN ****
-=======
 func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("changeEmailHandler called")
 	switch r.Method {
@@ -629,7 +619,6 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
->>>>>>> userpage
 func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
@@ -669,7 +658,6 @@ func main() {
 	http.HandleFunc("/API/users", userHandler)
 
 	http.HandleFunc("/API/sessions", sessionHandler)
-
 
 	http.HandleFunc("/API/shoppingcart", shoppingCartHandler)
 
