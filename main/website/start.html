@@ -25,7 +25,7 @@
     <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
     <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
     <a id="loginoutbutton" href="javascript:void(0);"
-           onclick="logInOut()">Log In</a>
+           onclick="logInOut()">Log In/Create account</a>
 </div>
 <script>
 IDcookie=getCookie("UserID")
@@ -52,7 +52,7 @@ async function logInOut(){
     IDcookie=getCookie("UserID")
 
     if (IDcookie==null || IDcookie==0){ // not logged in, go to login page
-        location.href="start/login.html"
+        location.href="/login.html"
 
     }else{//logged in, logging out
     try {
