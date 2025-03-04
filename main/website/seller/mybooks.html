@@ -11,14 +11,35 @@
 
 <body>
 
+<!-- Top menue -->
 <div class="topnav">
-    <a class="active" href="../start.html">Book Store</a>
+    <a  href="../start.html">Book Store</a>
+    <a  href="../seller/myorders.html">My Orders</a>
+    <a class="active" href="../seller/mybooks.html">My Books</a>
+    <a  href="../seller/mystorefront.html">My Storefront</a>
+    <a  href="../myaccount.html">My Account</a>
+    <a  href="javascript:void(0);"
+           onclick="logout()">Log Out</a>
 </div>
+<script>
+async function logout(){
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  }
+}
+</script>
 
-<div class="row">
-    <button id="viewBooksButton">books</button>
-    <div id="books"></div>
-</div>
 
 <button id="showform">Add book</button>
 
@@ -28,11 +49,12 @@
             <div class="flex-container">
                 <form id="addBookForm">   
                     <input name="title" type="text" placeholder="Title" id="title"><br>
+                    <input name="author" type="text" placeholder="Author" id="author"><br>
                     <input name="description" type="text" placeholder="Description" id="description"><br>
-                    <input name="price" type="text" placeholder="Price" id="price"><br>
+                    <input name="price" type="number" placeholder="Price" id="price"><br>
                     <input name="edition" type="text" placeholder="Edition" id="edition"><br>
-                    <input name="cathegory" type="text" placeholder="Cathegory" id="cathegory"><br>
-                    <input name="stockAmount" type="text" placeholder="Stock" id="stockAmount"><br>
+                    <input name="stockAmount" type="number" placeholder="Stock" id="stockAmount"><br>
+                    <input name="isbn" type="number" placeholder="ISBN" id="isbn"><br>
                     <input type="submit" value="Submit">
                 </form>
             </div>
@@ -40,14 +62,23 @@
     </div>
 </div>
 
-    
-<!--<a href="../start.html">start page</a>-->
+<div class="row">
+    <!--<button id="viewBooksButton">books</button>-->
+    <div id="books"></div>
 
+    Old/unavailable books:
+    <div id="old_books"></div>
+</div>
+
+    
+<!-- JAVASCRIPT starts here-->
 <script>
+
+viewBooks()
 
 const button = document.getElementById("showform");
 const form = document.getElementById("addbook");
-const viewBooksButton = document.getElementById("viewBooksButton");
+//const viewBooksButton = document.getElementById("viewBooksButton");
 
 button.addEventListener("click", function() {
     if (form.style.display === "none" || form.style.display === "") {
@@ -59,25 +90,50 @@ button.addEventListener("click", function() {
     }
 })
 
+function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+}
+
 document.getElementById("addBookForm").addEventListener("submit", async function(event) {
     event.preventDefault();  
 
-    const book = {
+    const User = {
+        username: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1],
+        password: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1]
+    }
+    console.log(getCookie("UserID"))
+    const Book = {
+        sellerId: getCookie("UserID"),
         title: document.getElementById("title").value,
+        author: document.getElementById("author").value,
         description: {String: document.getElementById("description").value, Valid: true},
-        price: parseInt(document.getElementById("price").value, 10),
+        price: {Int32: parseInt(document.getElementById("price").value, 10), Valid: true},
         edition: {String: document.getElementById("edition").value, Valid: true},
-        cathegory: document.getElementById("cathegory").value, 
-        stockAmount: parseInt(document.getElementById("stockAmount").value, 10)
+        stockAmount: parseInt(document.getElementById("stockAmount").value, 10),
+        isbn: {Int32: parseInt(document.getElementById("isbn").value, 10), Valid: true},
+        available: true
     };
 
-    console.log("Sending book data:", JSON.stringify(book));
+    console.log(getCookie(""))
+    console.log(document.cookie)
+    console.log(getCookie('Username'))
+    console.log("Sending book data:", JSON.stringify(User) + JSON.stringify(Book));
 
     try { 
         const response = await fetch("/add_book", { 
             method: "POST", 
             //headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(book)
+            body: JSON.stringify(Book)
         });
 
         if (!response.ok) {
@@ -97,13 +153,14 @@ document.getElementById("addBookForm").addEventListener("submit", async function
 
 
 async function viewBooks() {
-    console.log("1");
-
-    try {
     
+    console.log("cookies:")
+    console.log(document.cookie)
+    try {
+
         const response = await fetch("/viewSellerBook", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "sellerid": "1" },
+            //headers: { "Content-Type": "application/json" },
         });
 
         if (!response.ok) {
@@ -111,7 +168,7 @@ async function viewBooks() {
         }
 
         const jsonData = await response.json();
-        console.log("1");
+        //nsole.log("1");
         console.log(jsonData);
 
         if (!jsonData.books || !Array.isArray(jsonData.books)) {
@@ -136,7 +193,7 @@ async function viewBooks() {
     }
 
 }
-viewBooksButton.addEventListener("click", viewBooks);
+//viewBooksButton.addEventListener("click", viewBooks);
 
 
 </script>

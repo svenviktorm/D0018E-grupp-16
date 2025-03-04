@@ -14,10 +14,15 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 )
 
+var loginpageURL string = "../start/login.html"
+var startpageURL string = "../start.html"
+
+// **** TYPE DEFINITIONS ****
 type RequestData struct {
 	Text string `json:"text"`
 }
@@ -37,13 +42,54 @@ func (p *Page) save() error {
 	return os.WriteFile(filename, p.Body, 0600)
 }
 
+/*
+type Album struct {
+	ID     int64
+	Title  string
+	Artist string
+	Price  float32
+}
+*/
+
+//****** HTTP HANDLERS ******
+
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewHandler called")
 	requestPath := r.URL.Path
 	fmt.Println(requestPath)
+	fmt.Println(r.Header)
 	if requestPath == "/" {
 		http.ServeFile(w, r, "website/start.html")
 	} else {
+		if strings.HasPrefix(requestPath, "/seller/") {
+			fmt.Println("Seller only page, checking credentials")
+			IDcookie, err := r.Cookie("UserID")
+			fmt.Println(err, IDcookie)
+			if err != nil || IDcookie.Value == "0" {
+				fmt.Println("not a seller")
+				http.Redirect(w, r, loginpageURL, http.StatusSeeOther)
+				return
+			} else {
+				isSellerCookie, err := r.Cookie("IsSeller")
+				if err != nil || isSellerCookie.Value != "true" {
+					http.Error(w, "To access this page you must be registered as a seller", http.StatusForbidden)
+					return
+				}
+			}
+		} else if strings.HasPrefix(requestPath, "/admin/") {
+			IDcookie, err := r.Cookie("UserID")
+			if err != nil || IDcookie.Value == "0" {
+				http.Redirect(w, r, loginpageURL, http.StatusSeeOther)
+				return
+			} else {
+				isAdminCookie, err := r.Cookie("IsAdmin")
+				if err != nil || isAdminCookie.Value != "true" {
+					http.Error(w, "To access this page you must have administrator rights", http.StatusForbidden)
+					return
+				}
+			}
+		}
+
 		requestPath = requestPath[1:]
 		requestPath = "website/" + requestPath
 		http.ServeFile(w, r, requestPath)
@@ -61,14 +107,10 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		fmt.Println("Get request to users API")
 		fmt.Println("This should be an attempt to login or similar")
-		//fmt.Println(r)
-		//r.ParseForm()
-		//fmt.Println(r.Form)
 		uname := r.FormValue("username")
 		pwd := r.FormValue("password")
 		fmt.Printf("username:%v, password:%v, hash:%v", uname, pwd, hash(pwd))
 		fmt.Println("")
-		//fmt.Println(r.Form)
 
 		user, loginOK, err := LogInCheckNotHashed(uname, pwd)
 		user.Password = pwd
@@ -126,6 +168,57 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func sessionHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		fmt.Println("Invalid request method ", r.Method)
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+	fmt.Println("logout request")
+	IDcookie := http.Cookie{
+		Name:   "UserID",
+		Value:  "0", //A dummy value to overwrite the old just in case removal doesn't work for some reason (which it doesn't seemt to do)
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work,
+		// instead it just sets it to session? Setting it to 1 seem to make it disappear after a second has passed.
+		// (in either case the dummy values work to ensure that the user credentials can't be used anymore)
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &IDcookie)
+	namecookie := http.Cookie{
+		Name:   "Username",
+		Value:  "", //A dummy value to overwrite the old just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &namecookie)
+	pwdcookie := http.Cookie{
+		Name:   "Password",
+		Value:  "", //A dummy value to overwrite the old just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &pwdcookie)
+	sellercookie := http.Cookie{
+		Name:   "IsSeller",
+		Value:  "false", //just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &sellercookie)
+	admincookie := http.Cookie{
+		Name:   "IsAdmin",
+		Value:  "false", //just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &admincookie)
+	http.Redirect(w, r, startpageURL, http.StatusSeeOther)
+}
 func sendHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("sendHandler called")
 	if r.Method != http.MethodPost {
@@ -159,15 +252,6 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 	// Send JSON response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-}
-
-var db *sql.DB
-
-type Album struct {
-	ID     int64
-	Title  string
-	Artist string
-	Price  float32
 }
 
 func addBookHandler(w http.ResponseWriter, r *http.Request) {
@@ -220,7 +304,9 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewBooksBySellerHandler called")
 	//sellerId := r.Header.Get("sellerid")
+
 	user, err := getUserFromCookies(r)
+
 	if err != nil {
 		fmt.Println("Failed to get user: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -414,6 +500,10 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// *** Variables ***
+var db *sql.DB
+
+// **** MAIN ****
 func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
@@ -449,7 +539,12 @@ func main() {
 	http.HandleFunc("/send", sendHandler)
 	fmt.Println("c!")
 	http.HandleFunc("/API/users", userHandler)
+
+	http.HandleFunc("/API/sessions", sessionHandler)
+
+
 	http.HandleFunc("/API/shoppingcart", shoppingCartHandler)
+
 	log.Fatal(http.ListenAndServe(":80", nil))
 	fmt.Println("Server uppe!")
 }

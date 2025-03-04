@@ -110,7 +110,7 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 	tx, dberr := db.Begin()
 	//defer db.Close()
 	if dberr != nil {
-		return -2, fmt.Errorf("transaction erroor:", dberr)
+		return -2, fmt.Errorf("transaction error:", dberr)
 	}
 	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
 	if err != nil {

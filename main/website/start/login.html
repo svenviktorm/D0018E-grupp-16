@@ -45,15 +45,16 @@ async function sendLogin() {
         const user=await response.json()
         console.log(user)
         console.log("kalle anka")
-        document.cookie="UserID="+user.UserID
-        document.cookie="Username="+user.Username
-        document.cookie="Password="+user.Password
-        document.cookie="IsSeller="+user.IsSeller
-        document.cookie="IsAdmin="+user.IsAdmin
+         //TODO add timeout values to these (maxage)
+        document.cookie="UserID="+user.UserID+";Path=/;Max-Age=7200"
+        document.cookie="Username="+user.Username+";Path=/;Max-Age=7200"
+        document.cookie="Password="+user.Password+";Path=/;Max-Age=7200"
+        document.cookie="IsSeller="+user.IsSeller+";Path=/;Max-Age=7200"
+        document.cookie="IsAdmin="+user.IsAdmin+";Path=/;Max-Age=7200"
         console.log(document.cookie);
         if (user.IsSeller){
             console.log("going to seller page2")
-            location.replace("/start/seller.html")
+            location.replace("/seller/mybooks.html")
             //TODO should the userID be included in the URL? or passed along? Or should it just be fetched from the cookies?
         } else if (user.IsAdmin) {
             console.log("going to admin page")
@@ -67,6 +68,7 @@ async function sendLogin() {
 
     } else if (response.status==404) {
         document.getElementById("loginErrortext").innerText ="Login failed. Invalid username or password."
+        document.getElementById("login_password").value=""
     } else {
         //TODO handle other errors??
     }

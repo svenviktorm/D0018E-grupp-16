@@ -40,29 +40,33 @@ func main() {
 	// test add user and logincheck
 
 	ids, error := AddUser("aSeller", "sellerPwd", sql.NullString{"KalleAnka@123.com", true})
-	fmt.Println(ids, error)
+	fmt.Println("added future seller user", ids, error)
+	sellerid := ids
+	ids, error = AddUser("aBuyer", "buyerPwd", sql.NullString{"KalleAnka@123.com", true})
+	fmt.Println("added basic user", ids, error)
 	//fmt.Println("kalle")
 	user, _, errorr := LogInCheckNotHashed("aSeller", "sellerPwd")
-	fmt.Println("user from login: ", user, err)
+	fmt.Println("user from login, seller user: ", user, err)
 	user.Password = "sellerPwd"
 	var userID = user.UserID
 	fmt.Println("Login: ", userID, errorr)
 
-	sellerid, error := AddSeller(user, "Testseller", sql.NullString{"", false})
-	fmt.Println("addseller ", sellerid, error)
+	selleridCheck, error := AddSeller(user, "Testseller", sql.NullString{"", false})
+	fmt.Println("addseller ", selleridCheck, "ought to be equal to", sellerid, error)
 
 	user, err = GetUserByID(userID)
 	//user.Password = "1234"
 	fmt.Println("Get user: ", user, err)
 
-	sellerid = user.UserID
+	//sellerid = user.UserID
 
+	//***********************************
 	// test add book
 
 	var b Book
 	//fmt.Println(b)
 
-	b2 := Book{Title: "title book 1", SellerID: 1}
+	b2 := Book{Title: "title book 1", SellerID: sellerid}
 	//fmt.Println(b2)
 
 	b3 := Book{Title: "testbook2", SellerID: sellerid, Description: sql.NullString{"a nice long description", true}, Edition: sql.NullString{"edition 1", true}, StockAmount: 3, Available: false}
@@ -84,20 +88,20 @@ func main() {
 
 	sellerid = user.UserID
 
-	id, error := AddBookMin("book 3 title", sellerid)
-	fmt.Println("addbook ", id, error)
+	//id, error := AddBookMin("book 3 title", sellerid)
+	//fmt.Println("addbook book 3", id, error)
 
-	b2.SellerID = sellerid
-	b3.SellerID = sellerid
+	//b2.SellerID = sellerid
+	//b3.SellerID = sellerid
 	b.Title = "ERROR BOK"
-	id, error = AddBook(b)
-	fmt.Println("bookid", id, error)
+	id, error := AddBook(b)
+	fmt.Println("tried adding error book:", id, error)
 	fmt.Println(b2.SellerID)
 	id, error = AddBook(b2)
-	fmt.Println(id, error)
+	fmt.Println("added b2:", id, error)
 
 	id, error = AddBook(b3)
-	fmt.Println(id, error)
+	fmt.Println("added b3:", id, error)
 
 	books, err2 := GetBooksBySeller(1, true)
 

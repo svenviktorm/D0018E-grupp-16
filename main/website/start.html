@@ -17,11 +17,73 @@
 
 <div id="center">
 
+<!-- Top menue -->
 <div class="topnav">
-    <a class="active" href="start/../start.html">Book Store</a>
-    <a href="start/seller.html"></a>
-    <a id="login" href="start/login.html">Log in</a>
+    <a  class="active" href="/start.html">Book Store</a>
+    <a  href="../myaccount.html">My Account</a>
+    <a  href="../shoppingcart.html">Shopping Cart</a>
+    <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
+    <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
+    <a id="loginoutbutton" href="javascript:void(0);"
+           onclick="logInOut()">Log In</a>
 </div>
+<script>
+IDcookie=getCookie("UserID")
+console.log(IDcookie)
+document.getElementById("sellerpageslink").style.display="none"
+document.getElementById("adminpageslink").style.display="none"
+if (IDcookie!=null && IDcookie!=0){
+    console.log("logged in")
+    document.getElementById("loginoutbutton").innerHTML='Log Out'
+    sellercookie=getCookie("IsSeller")
+    if(sellercookie=="true"){
+        document.getElementById("sellerpageslink").style.display="block"
+    }
+    admincookie=getCookie("IsAdmin")
+    if(admincookie=="true"){
+        document.getElementById("adminpageslink").style.display="block"
+    }
+}
+
+
+async function logInOut(){
+    IDcookie=getCookie("UserID")
+
+    if (IDcookie==null || IDcookie==0){ // not logged in, go to login page
+        location.href="start/login.html"
+
+    }else{//logged in, logging out
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  }
+}
+}
+function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+}
+</script>
+
 
 <div class="flex-container">
     <form>
