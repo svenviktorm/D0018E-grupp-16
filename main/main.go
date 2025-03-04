@@ -136,12 +136,15 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		pwd := r.FormValue("password")
 		email := r.FormValue("email")
+		seller := r.FormValue("seller") == "seller"
+
 		fmt.Println("username:%v, password:%v, mail:%v", username, pwd, email)
 		emailSQL := sql.NullString{String: email, Valid: true}
 		if email == "" {
 			emailSQL = sql.NullString{String: "", Valid: false}
 		}
-		id, err := AddUser(username, pwd, emailSQL)
+
+		id, err := AddUser(username, pwd, emailSQL, seller)
 		if err != nil {
 			fmt.Println("Failed to add user: ", err)
 			http.Error(w, "Failed to add user: ", http.StatusNotFound)
@@ -229,7 +232,7 @@ func sendHandler(w http.ResponseWriter, r *http.Request) {
 	var requestData RequestData
 	err := json.NewDecoder(r.Body).Decode(&requestData)
 	if err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		http.Error(w, "error decoding JSON", http.StatusBadRequest)
 		return
 	}
 
@@ -264,8 +267,25 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	var book Book
 	fmt.Println("boddy: ", r.Body)
+<<<<<<< HEAD
+=======
+
+	//username := r.FormValue("username")
+	//password := r.FormValue("password")
+	//seller := r.FormValue("email")
+
+>>>>>>> userpage
 	err := json.NewDecoder(r.Body).Decode(&book)
-	fmt.Println("Book: ", book)
+	if err != nil {
+		return
+	}
+	IDcookie, err := r.Cookie("UserID")
+	var sellerId string = IDcookie.Value
+
+	SellerIDint, err := strconv.Atoi(sellerId)
+	fmt.Println(SellerIDint)
+	book.SellerID = int32(SellerIDint)
+	fmt.Println("Book: ", book.SellerID)
 	for a, c := range r.Cookies() {
 		fmt.Println(c, " | ", a)
 	}
@@ -282,8 +302,9 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//json.Unmarshal([]byte(r), &book)
-
+	fmt.Println(book)
 	id, err := AddBook(book)
+
 	if err != nil {
 		fmt.Println("Failed to add book: ", err)
 		http.Error(w, "Failed to add book: "+err.Error(), http.StatusInternalServerError)
@@ -334,7 +355,8 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			"price":       book.Price,
 			"edition":     book.Edition.String,
 			"stockAmount": book.StockAmount,
-			"status":      book.Available,
+			"available":   book.Available,
+			"isbn":        book.ISBN,
 		})
 	}
 
@@ -351,6 +373,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+<<<<<<< HEAD
 func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("shoppingCartHandler called")
 	switch r.Method {
@@ -504,6 +527,109 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 var db *sql.DB
 
 // **** MAIN ****
+=======
+func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("changeEmailHandler called")
+	switch r.Method {
+
+	case http.MethodPost:
+		email := r.FormValue("changeEmail")
+
+		fmt.Println("email:", email)
+		emailSQL := sql.NullString{email, true}
+		if email == "" {
+			emailSQL = sql.NullString{"", false}
+		}
+		IDcookie, err := r.Cookie("UserID")
+		if err != nil {
+			fmt.Println("error getting userID from cookie")
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+			return
+		}
+
+		userID, err := strconv.Atoi(IDcookie.Value)
+		if err != nil {
+			fmt.Println("error converting userID to int")
+			http.Error(w, "Invalid UserID", http.StatusBadRequest)
+			return
+		}
+
+		updatedEmail, err := changeEmail(emailSQL, int32(userID))
+		if err != nil {
+			fmt.Println("error updating email:", err)
+			return
+		}
+		fmt.Println(updatedEmail)
+
+	default:
+		fmt.Println("Unsupportet request type to users API")
+	}
+}
+
+func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("changeToSellerHandler called")
+
+	cookies := r.Cookies()
+	fmt.Println("All cookies:")
+	for _, cookie := range cookies {
+		fmt.Printf("Cookie Name: %s, Cookie Value: %s\n", cookie.Name, cookie.Value)
+	}
+
+	switch r.Method {
+
+	case http.MethodPost:
+
+		IDcookie, err := r.Cookie("UserID")
+		if err != nil {
+			fmt.Println("error getting userID from cookie")
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+			return
+		}
+		sellerId := IDcookie.Value
+		fmt.Println("sellerid", sellerId)
+		userID, err := strconv.Atoi(IDcookie.Value)
+		fmt.Println(userID)
+		if err != nil {
+			fmt.Println("error converting userID to int")
+			http.Error(w, "Invalid UserID", http.StatusBadRequest)
+			return
+		}
+
+		usernameCookie, err := r.Cookie("Username")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		passwordCookie, err := r.Cookie("Password")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		emailCookie, err := r.Cookie("Email")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		username := usernameCookie.Value
+		password := passwordCookie.Value
+		email := sql.NullString{String: emailCookie.Value, Valid: true}
+
+		changedSeller, err := changeToSeller(int32(userID), username, password, email)
+		if err != nil {
+			fmt.Println("error changing to seller:", err)
+			return
+		}
+		fmt.Println("changed to seller: ", changedSeller)
+
+	default:
+		fmt.Println("Unsupportet request type to users API")
+	}
+}
+
+>>>>>>> userpage
 func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
@@ -532,6 +658,8 @@ func main() {
 	http.HandleFunc("/", viewHandler)
 	http.HandleFunc("/add_book", addBookHandler)
 	http.HandleFunc("/viewSellerBook", viewBooksBySellerHandler)
+	http.HandleFunc("/email", changeEmailHandler)
+	http.HandleFunc("/changeToSeller", changeToSellerHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)

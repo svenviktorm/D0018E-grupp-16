@@ -30,7 +30,7 @@ type Book struct {
 	Edition     sql.NullString `json:"edition"`
 	Description sql.NullString `json:"description"`
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
-	Available   bool           `json:"status"`      //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
+	Available   bool           `json:"available"`   //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
 	ISBN        sql.NullInt32
 	NumRatings  sql.NullInt32
 	SumRatings  sql.NullInt32
@@ -45,20 +45,37 @@ func hash(plaintext string) int64 {
 	return int64(binary.BigEndian.Uint64(hash[:8]))
 }
 
-func AddUser(username string, password string, email sql.NullString) (int32, error) {
+func AddUser(username string, password string, email sql.NullString, isSeller bool) (int32, error) {
 	fmt.Println("kalle")
 	var passwordHash int64 = hash(password)
-	result, err := db.Exec("INSERT INTO Users (username, PasswordHash, email, IsAdmin, IsSeller) VALUES (?, ?, ?, ? , ?)", username, passwordHash, email, false, false)
+	result, err := db.Exec("INSERT INTO Users (username, PasswordHash, email, IsAdmin, IsSeller) VALUES (?, ?, ?, ? , ?)", username, passwordHash, email, false, isSeller)
 	if err != nil {
 		fmt.Println("anka2")
 		return 0, fmt.Errorf("AddUser: %v", err)
 	}
+
 	id, err := result.LastInsertId()
 	if err != nil {
 		fmt.Println("anka1")
 		return 0, fmt.Errorf("AddUser: %v", err)
 	}
 	var i32 int32 = int32(id)
+
+	if isSeller == true {
+		newUser := User{
+			UserID:   i32,
+			Username: username,
+			Password: password,
+			Email:    email,
+			IsSeller: isSeller,
+			IsAdmin:  false,
+		}
+		_, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+		if err != nil {
+			fmt.Println("Error adding seller:", err)
+			return 0, fmt.Errorf("AddSeller: %v", err)
+		}
+	}
 	fmt.Println("anka")
 	return i32, nil
 }
@@ -201,7 +218,7 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 		Int32: 0,
 	}
 	//id of -99 should not be used
-	var book = Book{-99, title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
+	var book = Book{-99, title, sellerID, nullStr, nullStr, 0, true, nullInt32, zeroInt32, zeroInt32, nullInt32}
 	return AddBook(book)
 
 }
@@ -232,6 +249,37 @@ func AddBook(book Book) (int32, error) {
 	}
 	return int32(id), nil
 
+}
+
+func changeEmail(email sql.NullString, id int32) (sql.Result, error) {
+	result, err := db.Exec("UPDATE Users SET Email = ? WHERE Id = ?", email, id)
+	if err != nil {
+		fmt.Println("error updating email")
+		return result, err
+	}
+	return result, nil
+}
+
+func changeToSeller(id int32, username string, password string, email sql.NullString) (int32, error) {
+	db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
+	newUser := User{
+		UserID:   id,
+		Username: username,
+		Password: password,
+		Email:    email,
+		IsSeller: true,
+		IsAdmin:  false,
+	}
+	sellerid, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+	if err != nil {
+		fmt.Println("Error adding seller:", err)
+		return 0, fmt.Errorf("AddSeller: %v", err)
+	}
+	if err != nil {
+		fmt.Println("error updating email")
+		return id, err
+	}
+	return sellerid, nil
 }
 
 func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
