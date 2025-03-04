@@ -516,8 +516,6 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 
 // *** Variables ***
 var db *sql.DB
-
-// **** MAIN ****
 func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("changeEmailHandler called")
 	switch r.Method {
@@ -618,6 +616,11 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Unsupportet request type to users API")
 	}
 }
+
+// *** Variables ***
+var db *sql.DB
+
+// **** MAIN ****
 
 func main() {
 	// Capture connection properties.
