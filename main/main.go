@@ -333,6 +333,12 @@ func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("changeToSellerHandler called")
 
+	cookies := r.Cookies()
+	fmt.Println("All cookies:")
+	for _, cookie := range cookies {
+		fmt.Printf("Cookie Name: %s, Cookie Value: %s\n", cookie.Name, cookie.Value)
+	}
+
 	switch r.Method {
 
 	case http.MethodPost:
@@ -343,13 +349,37 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "User not authenticated", http.StatusUnauthorized)
 			return
 		}
-
+		sellerId := IDcookie.Value
+		fmt.Println("sellerid", sellerId)
 		userID, err := strconv.Atoi(IDcookie.Value)
+		fmt.Println(userID)
 		if err != nil {
 			fmt.Println("error converting userID to int")
 			http.Error(w, "Invalid UserID", http.StatusBadRequest)
 			return
 		}
+
+		usernameCookie, err := r.Cookie("Username")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		passwordCookie, err := r.Cookie("Password")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		emailCookie, err := r.Cookie("Email")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		username := usernameCookie.Value
+		password := passwordCookie.Value
+		email := sql.NullString{String: emailCookie.Value, Valid: true}
 
 		changedSeller, err := changeToSeller(int32(userID), username, password, email)
 		if err != nil {

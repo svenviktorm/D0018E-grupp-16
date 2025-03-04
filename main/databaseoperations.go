@@ -260,13 +260,26 @@ func changeEmail(email sql.NullString, id int32) (sql.Result, error) {
 	return result, nil
 }
 
-func changeToSeller(id int32) (sql.Result, error) {
-	result, err := db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
+func changeToSeller(id int32, username string, password string, email sql.NullString) (int32, error) {
+	db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
+	newUser := User{
+		UserID:   id,
+		Username: username,
+		Password: password,
+		Email:    email,
+		IsSeller: true,
+		IsAdmin:  false,
+	}
+	sellerid, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+	if err != nil {
+		fmt.Println("Error adding seller:", err)
+		return 0, fmt.Errorf("AddSeller: %v", err)
+	}
 	if err != nil {
 		fmt.Println("error updating email")
-		return result, err
+		return id, err
 	}
-	return result, nil
+	return sellerid, nil
 }
 
 func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {

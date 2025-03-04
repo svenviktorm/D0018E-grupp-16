@@ -54,9 +54,10 @@ function getCookie(name) {
     return null;
 }
 
-document.getElementById("sellerButton").addEventListener("submit", async function(event) {
+document.getElementById("sellerButton").addEventListener("click", async function(event) {
     console.log("selerButton pressed")
-    if (getCookie("IsSeller") == false) {
+    console.log(getCookie("Password"))
+    if (getCookie("IsSeller") == "false") {
         try {
             const response = await fetch("/changeToSeller", {
                     method: "POST",

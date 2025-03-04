@@ -51,6 +51,7 @@ async function sendRegister() {
         document.cookie="UserID="+user.UserID
         document.cookie="Username="+user.Username
         document.cookie="Password="+user.Password
+        document.cookie="Email="+user.Email.String
         document.cookie="IsSeller="+user.IsSeller
         document.cookie="IsAdmin="+user.IsAdmin
         console.log(document.cookie);
