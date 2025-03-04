@@ -20,7 +20,7 @@
 <!-- Top menue -->
 <div class="topnav">
     <a  class="active" href="/start.html">Book Store</a>
-    <a  href="../myaccount.html">My Account</a>
+    <a  id="myaccountlink" href="../myaccount.html">My Account</a>
     <a  href="../shoppingcart.html">Shopping Cart</a>
     <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
     <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
@@ -43,6 +43,8 @@ if (IDcookie!=null && IDcookie!=0){
     if(admincookie=="true"){
         document.getElementById("adminpageslink").style.display="block"
     }
+}else{
+    document.getElementById("myaccountlink").style.display="none"
 }
 
 
