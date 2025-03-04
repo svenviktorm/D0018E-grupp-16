@@ -40,7 +40,6 @@ async function logout(){
 }
 </script>
 
-
 <button id="showform">Add book</button>
 
 <div class="flex-container">
@@ -50,7 +49,7 @@ async function logout(){
                 <form id="addBookForm">   
                     <input name="title" type="text" placeholder="Title" id="title"><br>
                     <input name="author" type="text" placeholder="Author" id="author"><br>
-                    <input name="description" type="text" placeholder="Description" id="description"><br>
+                    <textarea name="description" placeholder="Description" id="description" rows="1" style="resize: none; overflow: hidden;"></textarea><br>
                     <input name="price" type="number" placeholder="Price" id="price"><br>
                     <input name="edition" type="text" placeholder="Edition" id="edition"><br>
                     <input name="stockAmount" type="number" placeholder="Stock" id="stockAmount"><br>
@@ -76,6 +75,10 @@ async function logout(){
 
 viewBooks()
 
+document.getElementById("description").addEventListener("input", function () {
+    this.style.height = "auto"; 
+    this.style.height = this.scrollHeight + "px";
+});
 const button = document.getElementById("showform");
 const form = document.getElementById("addbook");
 //const viewBooksButton = document.getElementById("viewBooksButton");
@@ -149,6 +152,7 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         console.error("Error adding book", error);
         alert("Error adding book");
     }
+    document.getElementById("addBookForm").reset();
 }); 
 
 
@@ -160,7 +164,7 @@ async function viewBooks() {
 
         const response = await fetch("/viewSellerBook", {
             method: "POST",
-            //headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json" },
         });
 
         if (!response.ok) {
@@ -183,7 +187,7 @@ async function viewBooks() {
                 books.innerHTML += "<div class='row'></div>";
             }
 
-            const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>${book.description || "No description available"}</p><p>Price: ${book.price}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Category: ${book.cathegory}</p><p>Stock: ${book.stockAmount}</p><p>Status: ${book.status ? "Available" : "Not Available"}</p></div></div></div>`;
+            const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
             books.innerHTML += templateBook;
         });
 
