@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -267,20 +268,31 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	var book Book
 	fmt.Println("boddy: ", r.Body)
-	err := json.NewDecoder(r.Body).Decode(&book)
+
+	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
+		fmt.Println("Error reading body:", err)
+		http.Error(w, "Error reading request body", http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("Raw request body:", string(bodyBytes))
+
+	err = json.Unmarshal([]byte(bodyBytes), &book)
+	if err != nil {
+		fmt.Println("error decoding json")
+		return
+	}
+
+	// get the userID cookie
 	IDcookie, err := r.Cookie("UserID")
+
+	// convert cookie to integee
 	var sellerId string = IDcookie.Value
 
 	SellerIDint, err := strconv.Atoi(sellerId)
 	fmt.Println(SellerIDint)
 	book.SellerID = int32(SellerIDint)
 	fmt.Println("Book: ", book.SellerID)
-	for a, c := range r.Cookies() {
-		fmt.Println(c, " | ", a)
-	}
 
 	if err != nil {
 		fmt.Println("Failed to get cookie: ", err)
@@ -514,8 +526,6 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// *** Variables ***
-var db *sql.DB
 func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("changeEmailHandler called")
 	switch r.Method {

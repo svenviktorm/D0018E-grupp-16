@@ -26,12 +26,12 @@ type Seller struct {
 type Book struct {
 	BookID      int32
 	Title       string         `json:"title"`
-	SellerID    int32          `json:"sellerid"`
+	SellerID    int32          `json:"sellerId"`
 	Edition     sql.NullString `json:"edition"`
 	Description sql.NullString `json:"description"`
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
 	Available   bool           `json:"available"`   //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
-	ISBN        sql.NullInt32
+	ISBN        sql.NullInt32  `json:"isbn"`
 	NumRatings  sql.NullInt32
 	SumRatings  sql.NullInt32
 	Price       sql.NullInt32 `json:"price"`

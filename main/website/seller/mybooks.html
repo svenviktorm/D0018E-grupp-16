@@ -21,24 +21,6 @@
     <a  href="javascript:void(0);"
            onclick="logout()">Log Out</a>
 </div>
-<script>
-async function logout(){
-    try {
-    const response = await fetch("/API/sessions", {
-      method: "DELETE",
-      redirect: "follow"
-    });
-    //if (response.ok){
-        location.href=response.url
-    //} else {
-        //TODO handle errors??
-    //}
-    
-  } catch (e) {
-    console.error(e);
-  }
-}
-</script>
 
 <button id="showform">Add book</button>
 
@@ -74,6 +56,23 @@ async function logout(){
 <script>
 
 viewBooks()
+
+async function logout(){
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  }
+}
 
 document.getElementById("description").addEventListener("input", function () {
     this.style.height = "auto"; 
@@ -114,9 +113,9 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         username: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1],
         password: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1]
     }
-    console.log(getCookie("UserID"))
+    console.log(getCookie("SellerID"))
     const Book = {
-        sellerId: getCookie("UserID"),
+        sellerId: getCookie("SellerID"),
         title: document.getElementById("title").value,
         author: document.getElementById("author").value,
         description: {String: document.getElementById("description").value, Valid: true},
@@ -154,7 +153,6 @@ document.getElementById("addBookForm").addEventListener("submit", async function
     }
     document.getElementById("addBookForm").reset();
 }); 
-
 
 async function viewBooks() {
     
