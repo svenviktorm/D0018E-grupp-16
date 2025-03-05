@@ -46,9 +46,6 @@
 <div class="row">
     <!--<button id="viewBooksButton">books</button>-->
     <div id="books"></div>
-
-    Old/unavailable books:
-    <div id="old_books"></div>
 </div>
 
     
@@ -178,16 +175,36 @@ async function viewBooks() {
         }
 
         const books = document.getElementById("books");
-        books.innerHTML = ""; 
+        books.innerHTML = "";
+        
+        const availableBooks = jsonData.books.filter(book => book.available);
+        const unavailableBooks = jsonData.books.filter(book => !book.available);
 
-        jsonData.books.forEach((book, i) => {
-            if (i % 4 === 0) {
-                books.innerHTML += "<div class='row'></div>";
-            }
+        if (availableBooks.length > 0) {
+            books.innerHTML += "<div class='row'><h3>Available Books</h3></div>";
+            availableBooks.forEach((book, i) => {
+                if (i % 4 === 0) {
+                    books.innerHTML += "<div class='row'></div>";
+                }
+                const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
+                books.innerHTML += templateBook;
+            });
+        } else {
+            books.innerHTML += "<div class='row'><h3>No Available Books</h3></div>";
+        }
 
-            const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
-            books.innerHTML += templateBook;
-        });
+        if (unavailableBooks.length > 0) {
+            books.innerHTML += "<div class='row'><h3>Unavailable Books</h3></div>";
+            unavailableBooks.forEach((book, i) => {
+                if (i % 4 === 0) {
+                    books.innerHTML += "<div class='row'></div>";
+                }
+                const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
+                books.innerHTML += templateBook;
+            });
+        } else {
+            books.innerHTML += "<div class='row'><h3>No Unavailable Books</h3></div>";
+        }
 
     } catch (error) {
         console.error("Error:", error);
