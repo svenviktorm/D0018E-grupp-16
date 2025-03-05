@@ -24,7 +24,7 @@ type Seller struct {
 }
 
 type Book struct {
-	BookID      int32
+	BookID      int32          `json:"bookId"`
 	Title       string         `json:"title"`
 	SellerID    int32          `json:"sellerId"`
 	Edition     sql.NullString `json:"edition"`
@@ -282,6 +282,19 @@ func changeToSeller(id int32, username string, password string, email sql.NullSt
 	return sellerid, nil
 }
 
+func editBook(book Book) (int32, error) {
+	result, err := db.Exec("UPDATE Books SET Title = ?, Description = ?, Price = ?, Edition = ?, StockAmount = ?, ISBN = ? WHERE Id = ?", book.Title, book.Description, book.Price, book.Edition, book.StockAmount, book.ISBN, book.BookID)
+	if err != nil {
+		return -1, fmt.Errorf("addBook: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return -2, fmt.Errorf("addBook: %v", err)
+	}
+
+	return int32(id), nil
+}
+
 func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 	var books []Book
 	var ids []int32
@@ -339,7 +352,7 @@ func SearchBooksByTitleV2(titlesearch string) ([]Book, error) {
 func ViewSellerBooks(sellerID int32) ([]Book, error) {
 	var books []Book
 
-	rows, err := db.Query("SELECT Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings FROM Books WHERE SellerID = ?", sellerID)
+	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books WHERE SellerID = ?", sellerID)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +360,7 @@ func ViewSellerBooks(sellerID int32) ([]Book, error) {
 
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings)
+		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
 		if err != nil {
 			return nil, err
 		}

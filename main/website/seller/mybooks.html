@@ -43,11 +43,32 @@
     </div>
 </div>
 
+<div class="flex-container" style="display: none;">
+    <div id="edit">
+        <card>
+            <div class="flex-container">
+                <form id="editBookForm">   
+                    <input name="title" type="text" placeholder="Title" id="title"><br>
+                    <textarea name="description" placeholder="Description" id="description" rows="1" style="resize: none; overflow: hidden;"></textarea><br>
+                    <input name="price" type="number" placeholder="Price" id="price"><br>
+                    <input name="edition" type="text" placeholder="Edition" id="edition"><br>
+                    <input name="stockAmount" type="number" placeholder="Stock" id="stockAmount"><br>
+                    <input name="isbn" type="number" placeholder="ISBN" id="isbn"><br>
+                    <input type="submit" value="Submit">
+                </form>
+            </div>
+        </card>
+    </div>
+</div>
+
 <div class="row">
     <!--<button id="viewBooksButton">books</button>-->
     <div id="books"></div>
 </div>
 
+<div class="row">
+    <div id="detailedBooksCard"></div>
+</div>
     
 <!-- JAVASCRIPT starts here-->
 <script>
@@ -72,11 +93,13 @@ async function logout(){
 }
 
 document.getElementById("description").addEventListener("input", function () {
-    this.style.height = "auto"; 
-    this.style.height = this.scrollHeight + "px";
+    this.style.height = "auto";
+    this.style.height = this.scrollHeight + "px"
 });
-const button = document.getElementById("showform");
-const form = document.getElementById("addbook");
+const button = document.getElementById("showform")
+const form = document.getElementById("addbook")
+const editbutton = document.getElementById("editbutton")
+const editform = document.getElementById("edit")
 //const viewBooksButton = document.getElementById("viewBooksButton");
 
 button.addEventListener("click", function() {
@@ -89,12 +112,22 @@ button.addEventListener("click", function() {
     }
 })
 
+editbutton.addEventListener("click", function() {
+    if (editform.style.display === "none" || editform.style.display === "") {
+        editform.style.display = "block";
+        editbutton.textContent = "Back";
+    } else {
+        editform.style.display = "none";
+        editbutton.textContent = "Edit";
+    }
+})
+
 function getCookie(name) {
     const cookieString = document.cookie;
     if (cookieString) {
-        const cookies = cookieString.split(';');
+        const cookies = cookieString.split(';')
         for (let cookie of cookies) {
-        const [cookieName, cookieValue] = cookie.trim().split('=');
+        const [cookieName, cookieValue] = cookie.trim().split('=')
         if (cookieName === name) {
             return cookieValue;
         }
@@ -126,7 +159,7 @@ document.getElementById("addBookForm").addEventListener("submit", async function
     console.log(getCookie(""))
     console.log(document.cookie)
     console.log(getCookie('Username'))
-    console.log("Sending book data:", JSON.stringify(User) + JSON.stringify(Book));
+    console.log("Sending book data:", JSON.stringify(User) + JSON.stringify(Book))
 
     try { 
         const response = await fetch("/add_book", { 
@@ -137,84 +170,181 @@ document.getElementById("addBookForm").addEventListener("submit", async function
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+            throw new Error(`HTTP ${response.status}: ${errorText}`)
         }
 
-        const result = await response.json();
+        const result = await response.json()
 
-        console.log("Added book", result);
-        alert("Added book succesfully");
+        console.log("Added book", result)
+        alert("Added book succesfully")
+        viewBooks()
     } catch (error) { 
-        console.error("Error adding book", error);
-        alert("Error adding book");
+        console.error("Error adding book", error)
+        alert("Error adding book")
     }
-    document.getElementById("addBookForm").reset();
+    document.getElementById("addBookForm").reset()
 }); 
 
 async function viewBooks() {
-    
-    console.log("cookies:")
+    console.log("cookies:");
     console.log(document.cookie)
-    try {
 
+    try {
         const response = await fetch("/viewSellerBook", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {"Content-Type": "application/json"},
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`)
         }
 
-        const jsonData = await response.json();
-        //nsole.log("1");
-        console.log(jsonData);
+        const jsonData = await response.json()
+        console.log(jsonData)
 
         if (!jsonData.books || !Array.isArray(jsonData.books)) {
-            throw new Error("Invalid data format");
+            throw new Error("Invalid data format")
         }
 
-        const books = document.getElementById("books");
-        books.innerHTML = "";
-        
-        const availableBooks = jsonData.books.filter(book => book.available);
-        const unavailableBooks = jsonData.books.filter(book => !book.available);
+        const books = document.getElementById("books")
+        books.innerHTML = ""
 
-        if (availableBooks.length > 0) {
-            books.innerHTML += "<div class='row'><h3>Available Books</h3></div>";
-            availableBooks.forEach((book, i) => {
-                if (i % 4 === 0) {
-                    books.innerHTML += "<div class='row'></div>";
-                }
-                const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
-                books.innerHTML += templateBook;
+        const availableBooks = jsonData.books.filter(book => book.available)
+        const unavailableBooks = jsonData.books.filter(book => !book.available)
+
+        function renderBooks(bookList, sectionTitle) {
+            if (bookList.length > 0) {
+                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`
+                bookList.forEach((book) => {
+                    const templateBook = `<div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div>`
+                    books.innerHTML += templateBook
+                })
+            } else {
+                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`
+            }
+        }
+
+        renderBooks(availableBooks, "Available Books")
+        renderBooks(unavailableBooks, "Unavailable Books")
+
+        books.addEventListener("click", (event) => {
+        const card = event.target.closest(".card")
+        if (card) {
+            const bookId = parseInt(card.getAttribute("data-bookid"), 10)
+            console.log("Clicked bookId:", bookId)
+
+            const book = jsonData.books.find(b => {
+                console.log("Comparing with bookId:", b.bookId)
+                return parseInt(b.bookId, 10) === bookId
             });
-        } else {
-            books.innerHTML += "<div class='row'><h3>No Available Books</h3></div>";
-        }
 
-        if (unavailableBooks.length > 0) {
-            books.innerHTML += "<div class='row'><h3>Unavailable Books</h3></div>";
-            unavailableBooks.forEach((book, i) => {
-                if (i % 4 === 0) {
-                    books.innerHTML += "<div class='row'></div>";
-                }
-                const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
-                books.innerHTML += templateBook;
-            });
-        } else {
-            books.innerHTML += "<div class='row'><h3>No Unavailable Books</h3></div>";
+            if (book) {
+                console.log("Found book:", book)
+                showBookDetails(book)
+            } else {
+                console.log("Book not found for bookId:", bookId)
+            }
         }
+    })
+    
 
     } catch (error) {
-        console.error("Error:", error);
-        document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`;
+        console.error("Error:", error)
+        document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`
+    }
+}
+
+function showBookDetails(book) {
+    console.log("Showing book details for:", book.title)
+
+    const books = document.getElementById("books")
+    
+    const detailedBookHTML = `
+        <div id="detailedCard" class="detailed-card">
+            <h3>Book Details</h3>
+            <p><b>Title:</b> ${book.title}</p>
+            <p><b>Description:</b> ${book.description || "No description"}</p>
+            <p><b>Price:</b> ${book.price.Int32 ?? "Unknown price"}</p>
+            <p><b>Edition:</b> ${book.edition || "No edition"}</p>
+            <p><b>Stock:</b> ${book.stockAmount}</p>
+            <p><b>Available:</b> ${book.available}</p>
+            <p><b>ISBN:</b> ${book.isbn.Int32 ?? "Unknown ISBN"}</p>
+            <button id="editbutton" onclick="edit(${JSON.stringify(book)})">Edit</button>
+            <button onclick="removeBook()">Remove book</button>
+            <button onclick="closeDetails()">Close</button>
+        </div>`
+    
+    const existingDetailCard = document.getElementById("detailedCard")
+    if (existingDetailCard) {
+        existingDetailCard.remove()
     }
 
+    books.innerHTML += detailedBookHTML
 }
-//viewBooksButton.addEventListener("click", viewBooks);
+
+//viewBooksButton.addEventListener("click", viewBooks)
 
 
+function closeDetails() {
+    const books = document.getElementById("books")
+    const detailedCard = document.getElementById("detailedCard")
+    if (detailedCard) {
+        books.removeChild(detailedCard)
+    }
+}
+
+function edit(book) {
+    const editForm = document.getElementById("edit")
+    editForm.style.display = "block"
+
+    document.querySelector("#editBookForm [name='title']").value = book.title
+    document.querySelector("#editBookForm [name='description']").value = book.description
+    document.querySelector("#editBookForm [name='price']").value = book.price.Int32
+    document.querySelector("#editBookForm [name='edition']").value = book.edition
+    document.querySelector("#editBookForm [name='stockAmount']").value = book.stockAmount
+    document.querySelector("#editBookForm [name='isbn']").value = book.isbn.Int32
+
+    document.getElementById("editBookForm").addEventListener("submit", async function(event) {
+        event.preventDefault()
+
+        const updatedBook = {
+            bookId: book.bookId,
+            title: document.querySelector("#editBookForm [name='title']").value,
+            description: { String: document.querySelector("#editBookForm [name='description']").value, Valid: true },
+            price: { Int32: parseInt(document.querySelector("#editBookForm [name='price']").value, 10), Valid: true },
+            edition: document.querySelector("#editBookForm [name='edition']").value,
+            stockAmount: parseInt(document.querySelector("#editBookForm [name='stockAmount']").value, 10),
+            isbn: { Int32: parseInt(document.querySelector("#editBookForm [name='isbn']").value, 10), Valid: true },
+            available: book.available
+        }
+
+        try {
+            const response = await fetch("/edit_book", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedBook)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`)
+            }
+
+            const result = await response.json()
+            console.log("Edited book", result)
+            alert("Book edited successfully")
+            editForm.style.display = "none"
+            viewBooks();
+        } catch (error) {
+            console.error("Error editing book", error)
+            alert("Error editing book")
+        }
+    })
+}
+
+function removeBook() {
+
+}
 </script>
 
 </body>

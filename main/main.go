@@ -353,6 +353,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			book.Price = sql.NullInt32{0, true}
 		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
+			"bookId":      book.BookID,
 			"title":       book.Title,
 			"sellerid":    book.SellerID,
 			"description": book.Description.String,
@@ -627,6 +628,73 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func editBookHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("editBookHandler called")
+	if r.Method != http.MethodPost {
+		fmt.Println("Invalid request method ", r.Method)
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var book Book
+	fmt.Println("boddy: ", r.Body)
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		fmt.Println("Error reading body:", err)
+		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		return
+	}
+
+	err = json.Unmarshal([]byte(bodyBytes), &book)
+	if err != nil {
+		fmt.Println("error decoding json")
+		return
+	}
+
+	// get the userID cookie
+	IDcookie, err := r.Cookie("UserID")
+
+	// convert cookie to integee
+	var sellerId string = IDcookie.Value
+
+	SellerIDint, err := strconv.Atoi(sellerId)
+	fmt.Println(SellerIDint)
+	book.SellerID = int32(SellerIDint)
+	fmt.Println("Book: ", book.SellerID)
+
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		http.Error(w, "Failed to get cookie: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err != nil {
+		fmt.Println("Invalid JSON", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	//json.Unmarshal([]byte(r), &book)
+	fmt.Println(book)
+	id, err := editBook(book)
+
+	if err != nil {
+		fmt.Println("Failed to edit book: ", err)
+		http.Error(w, "Failed to edit book: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Printf("Received book: %+v\n", book)
+
+	//w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "success",
+		"message": "Book edited successfully",
+		"id":      id,
+	})
+}
+
 // *** Variables ***
 var db *sql.DB
 
@@ -662,6 +730,7 @@ func main() {
 	http.HandleFunc("/viewSellerBook", viewBooksBySellerHandler)
 	http.HandleFunc("/email", changeEmailHandler)
 	http.HandleFunc("/changeToSeller", changeToSellerHandler)
+	http.HandleFunc("/edit_book", editBookHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)
