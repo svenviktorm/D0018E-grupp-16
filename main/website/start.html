@@ -20,7 +20,7 @@
 <!-- Top menue -->
 <div class="topnav">
     <a  class="active" href="/start.html">Book Store</a>
-    <a  id="myaccountlink" href="../myaccount.html">My Account</a>
+    <a  id="myaccountlink" href="/user/myaccount.html">My Account</a>
     <a  href="../shoppingcart.html">Shopping Cart</a>
     <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
     <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
@@ -88,9 +88,15 @@ function getCookie(name) {
 
 
 <div class="flex-container">
-    <form>
-        <input id="search" type="text" placeholder=" Search book">
-        <button onclick="sendText()" type="submit">search</button> 
+    <form id="searchform">
+        <input id="search" name="search" type="text" placeholder=" Search book">
+        <select id="searchtype" name="type">
+            <option value="Title">Title</option>
+            <option value="Author">Author</option>
+            <!--<option value="Seller">Seller</option>-->
+            <option value="ISBN">ISBN</option>
+          </select>
+        <button type="submit">search</button> 
 
     </form>
 </div>
@@ -119,20 +125,68 @@ function getCookie(name) {
     </div>
 </div>
 
-<a href="start/seller.html">seller</a>
+
 
 </div>
 
 <script>
-var books = [
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-];
 
+const form = document.querySelector("#searchform");
+
+form.addEventListener("submit", (event) => {
+  console.log("submit called")
+  event.preventDefault();
+  searchBook();
+});
+
+
+function searchBook() {
+    console.log("searchbook clicked")
+    const formData = new FormData(form);
+  
+  const searchParams= new URLSearchParams(formData)
+console.log(searchParams)
+            fetch("/API/books?"+searchParams, {
+                method: "GET",
+            })
+            .then(response => response.json()) // Parse JSON response
+            .then(booklist => {
+                
+                const books = document.getElementById("books");
+        books.innerHTML = ""; 
+        if (booklist!=null && booklist.length > 0) {       
+        booklist.forEach((book, i) => {
+            if (i % 4 === 0) {
+                books.innerHTML += "<div class='row'></div>";
+            }
+
+            const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Author: ${book.author ?? "Unknown"}</p><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition.String || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
+            books.innerHTML += templateBook;
+        });
+
+            }
+        })
+            /*
+            response.json()) // Parse JSON response
+            .then(data => {
+                console.log(data)
+                //document.getElementById("output").innerText = "Response: " + data.response;
+            })
+                */
+            .catch(error => console.error("Error:", error));
+        }
+
+
+//var books = [
+//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
+//];
+
+/*
 $.each(books, function (i) {
     if (i % 4 === 0) {
         $('#books').append('<div class="row"></div>'); 
@@ -152,7 +206,7 @@ button.addEventListener("click", function() {
         card.style.display = "none";
     }
 })
-
+*/
 </script>
 
 </body>

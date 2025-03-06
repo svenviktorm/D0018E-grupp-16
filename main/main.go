@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -222,41 +223,83 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &admincookie)
 	http.Redirect(w, r, startpageURL, http.StatusSeeOther)
 }
-func sendHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("sendHandler called")
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
+
+/*
+	func sendHandler(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("sendHandler called")
+		if r.Method != http.MethodPost {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var requestData RequestData
+		err := json.NewDecoder(r.Body).Decode(&requestData)
+		if err != nil {
+			http.Error(w, "error decoding JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Process the input text (modify response as needed)
+		responseText := fmt.Sprintf("You sent: %s", requestData.Text)
+		fmt.Println(responseText)
+		// Create response
+		books, err := SearchBooksByTitleV1(requestData.Text)
+		//fmt.Println(resp)
+		var res string
+		if err != nil {
+			res = fmt.Sprintf("Error: %v\n", err)
+		} else {
+			res = fmt.Sprintf("Hits when searching for %v: %v\n", requestData.Text, books)
+		}
+
+		// Create response
+		response := ResponseData{Response: res}
+
+		// Send JSON response
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
 	}
+*/
+func bookHandler(w http.ResponseWriter, r *http.Request) {
+	var books []Book
+	var error error
+	switch r.Method {
+	case http.MethodGet:
+		fmt.Println("Book search API called")
+		fmt.Println(r)
+		searchtype := r.FormValue("type")
+		searchstring := r.FormValue("search")
+		switch searchtype {
+		case "Title":
+			books, error = SearchBooksByTitle(searchstring, true)
 
-	var requestData RequestData
-	err := json.NewDecoder(r.Body).Decode(&requestData)
-	if err != nil {
-		http.Error(w, "error decoding JSON", http.StatusBadRequest)
-		return
+		case "Author":
+			books, error = SearchBooksByAuthor(searchstring, true)
+		case "ISBN":
+			isbn, err := strconv.Atoi(searchstring)
+			if err != nil {
+				fmt.Println("Something went wrong when converting ISBN to int")
+				//TODO actuall error handling
+			}
+			books, error = SearchBooksByISBN(isbn, true)
+
+		default:
+			fmt.Println("Unimplemented search type")
+		}
+		if error != nil {
+			fmt.Printf("some error: %v", error)
+		}
+		fmt.Println(books)
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(books)
+		if err != nil {
+			fmt.Println("Failed to encode response: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	default:
+		fmt.Println("Unsupportet request type to users API")
 	}
-
-	// Process the input text (modify response as needed)
-	responseText := fmt.Sprintf("You sent: %s", requestData.Text)
-	fmt.Println(responseText)
-	// Create response
-	books, err := SearchBooksByTitleV1(requestData.Text)
-	//fmt.Println(resp)
-	var res string
-	if err != nil {
-		res = fmt.Sprintf("Error: %v\n", err)
-	} else {
-		res = fmt.Sprintf("Hits when searching for %v: %v\n", requestData.Text, books)
-	}
-
-	// Create response
-	response := ResponseData{Response: res}
-
-	// Send JSON response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
 }
-
 func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("addBookHandler called")
 	if r.Method != http.MethodPost {
@@ -267,11 +310,25 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	var book Book
 	fmt.Println("boddy: ", r.Body)
-	err := json.NewDecoder(r.Body).Decode(&book)
+
+	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
+		fmt.Println("Error reading body:", err)
+		http.Error(w, "Error reading request body", http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("Raw request body:", string(bodyBytes))
+
+	err = json.Unmarshal([]byte(bodyBytes), &book)
+	if err != nil {
+		fmt.Println("error decoding json")
+		return
+	}
+
+	// get the userID cookie
 	IDcookie, err := r.Cookie("UserID")
+
+	// convert cookie to integee
 	var sellerId string = IDcookie.Value
 
 	SellerIDint, err := strconv.Atoi(sellerId)
@@ -514,8 +571,6 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// *** Variables ***
-var db *sql.DB
 func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("changeEmailHandler called")
 	switch r.Method {
@@ -656,13 +711,14 @@ func main() {
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)
 	fmt.Println("b!")
-	http.HandleFunc("/send", sendHandler)
-	fmt.Println("c!")
+	//http.HandleFunc("/send", sendHandler)
+	//fmt.Println("c!")
 	http.HandleFunc("/API/users", userHandler)
 
 	http.HandleFunc("/API/sessions", sessionHandler)
 
 	http.HandleFunc("/API/shoppingcart", shoppingCartHandler)
+	http.HandleFunc("/API/books", bookHandler)
 
 	log.Fatal(http.ListenAndServe(":80", nil))
 	fmt.Println("Server uppe!")
