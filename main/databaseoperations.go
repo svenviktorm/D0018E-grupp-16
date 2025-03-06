@@ -323,6 +323,11 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 	return books, nil
 }
 
+func removeBook(available bool, bookId int32) error {
+	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
+	return nil
+}
+
 func SearchBooksByTitleV2(titlesearch string) ([]Book, error) {
 	var books []Book
 	var err error

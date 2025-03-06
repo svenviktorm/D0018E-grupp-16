@@ -312,6 +312,8 @@ function showBookDetails(book) {
 
     const detailedBook = document.getElementById("detailedCard");
 
+    detailedBook.setAttribute("data-bookid", book.bookId)
+
     document.getElementById("detailedBookTitle").textContent = book.title;
     document.getElementById("detailedBookDescription").textContent = book.description || "No description";
     document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
@@ -432,9 +434,56 @@ function exitEdit(){
     editdiv.style.display = "none";
 }
 
-function removeBook() {
+async function removeBook() {
     console.log("remove book caled")
+
+    let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
+    
+    bookId = parseInt(bookId, 10)
+    console.log("bookId: ", bookId)
+
+    if (!bookId) {
+        alert("No book selected for removal");
+        return;
+    }
+
+    const confirmed = confirm("Are you sure you want to make this book unavailable?")
+    if (!confirmed) {
+        return
+    }
+
+    try {
+        const response = await fetch("/remove_book", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({available: false, bookId: bookId})
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
+
+        const bookElement = document.getElementById(`book-${bookId}`)
+        if (bookElement) {
+            const availableText = bookElement.querySelector('p:last-child')
+            if (availableText) {
+                availableText.textContent = "Available: No"
+            }
+        }
+        viewBooks()
+        closeDetails()
+
+        alert("Book marked as unavailable")
+
+    } catch (error) {
+        console.error("Error marking book as unavailable:", error)
+        alert("Error marking book as unavailable")
+    }
 }
+
 </script>
 
 </body>

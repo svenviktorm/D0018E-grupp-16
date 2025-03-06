@@ -691,6 +691,27 @@ func editBookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("JSON response sent:", response)
 }
 
+func removeBookHandler(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Available bool  `json:"available"`
+		BookId    int32 `json:"bookId"`
+	}
+	fmt.Println("availaible: ", data.Available, "bookid: ", data.BookId)
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		fmt.Println("Error decoding json", err)
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	err = removeBook(data.Available, data.BookId)
+	if err != nil {
+		http.Error(w, "Error updating book availability", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 // *** Variables ***
 var db *sql.DB
 
@@ -727,6 +748,7 @@ func main() {
 	http.HandleFunc("/email", changeEmailHandler)
 	http.HandleFunc("/changeToSeller", changeToSellerHandler)
 	http.HandleFunc("/edit_book", editBookHandler)
+	http.HandleFunc("/remove_book", removeBookHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)
