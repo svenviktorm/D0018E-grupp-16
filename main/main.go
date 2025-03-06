@@ -637,62 +637,58 @@ func editBookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var book Book
-	fmt.Println("boddy: ", r.Body)
+	fmt.Println("body: ", r.Body)
 
-	bodyBytes, err := io.ReadAll(r.Body)
+	err := json.NewDecoder(r.Body).Decode(&book)
 	if err != nil {
-		fmt.Println("Error reading body:", err)
-		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		fmt.Println("error decoding json:", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	err = json.Unmarshal([]byte(bodyBytes), &book)
-	if err != nil {
-		fmt.Println("error decoding json")
-		return
-	}
+	fmt.Printf("Decoded Book: %+v\n", book)
 
-	// get the userID cookie
 	IDcookie, err := r.Cookie("UserID")
-
-	// convert cookie to integee
-	var sellerId string = IDcookie.Value
-
-	SellerIDint, err := strconv.Atoi(sellerId)
-	fmt.Println(SellerIDint)
-	book.SellerID = int32(SellerIDint)
-	fmt.Println("Book: ", book.SellerID)
-
 	if err != nil {
 		fmt.Println("Failed to get cookie: ", err)
 		http.Error(w, "Failed to get cookie: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// convert cookie to integer
+	sellerId := IDcookie.Value
+	SellerIDint, err := strconv.Atoi(sellerId)
 	if err != nil {
-		fmt.Println("Invalid JSON", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		fmt.Println("Failed to convert cookie to integer:", err)
+		http.Error(w, "Invalid seller ID", http.StatusBadRequest)
 		return
 	}
 
-	//json.Unmarshal([]byte(r), &book)
-	fmt.Println(book)
-	id, err := editBook(book)
+	book.SellerID = int32(SellerIDint)
+	fmt.Println("Book SellerID:", book.SellerID)
 
+	id, err := editBook(book)
 	if err != nil {
 		fmt.Println("Failed to edit book: ", err)
 		http.Error(w, "Failed to edit book: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Printf("Received book: %+v\n", book)
-
-	//w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	response := map[string]interface{}{
 		"status":  "success",
 		"message": "Book edited successfully",
 		"id":      id,
-	})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		fmt.Println("Error encoding JSON response:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("JSON response sent:", response)
 }
 
 // *** Variables ***

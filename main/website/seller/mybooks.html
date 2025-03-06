@@ -43,22 +43,36 @@
     </div>
 </div>
 
-<div class="flex-container" style="display: none;">
-    <div id="edit">
+<div class="flex-container">
+    <div id="edit" style="display: none;">
         <card>
             <div class="flex-container">
                 <form id="editBookForm">   
-                    <input name="title" type="text" placeholder="Title" id="title"><br>
-                    <textarea name="description" placeholder="Description" id="description" rows="1" style="resize: none; overflow: hidden;"></textarea><br>
-                    <input name="price" type="number" placeholder="Price" id="price"><br>
-                    <input name="edition" type="text" placeholder="Edition" id="edition"><br>
-                    <input name="stockAmount" type="number" placeholder="Stock" id="stockAmount"><br>
-                    <input name="isbn" type="number" placeholder="ISBN" id="isbn"><br>
+                    <h3><b>Edit book</b></h3>
+                    <input name="title" type="text" placeholder="Title" id="titleedit"><br>
+                    <textarea name="description" placeholder="Description" id="descriptionedit" rows="1" style="resize: none; overflow: hidden;"></textarea><br>
+                    <input name="price" type="number" placeholder="Price" id="priceedit"><br>
+                    <input name="edition" type="text" placeholder="Edition" id="editionedit"><br>
+                    <input name="stockAmount" type="number" placeholder="Stock" id="stockAmountedit"><br>
+                    <input name="isbn" type="number" placeholder="ISBN" id="isbnedit"><br>
                     <input type="submit" value="Submit">
                 </form>
             </div>
         </card>
     </div>
+</div>
+
+<div id="detailedCard" class="detailed-card" style="display:none;">
+    <h3 id="detailedBookTitle"></h3>
+    <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
+    <p><b>Price:</b> <span id="detailedBookPrice"></span></p>
+    <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
+    <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
+    <p><b>Available:</b> <span id="detailedBookAvailable"></span></p>
+    <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
+    <button id="editBookButton">Edit</button>
+    <button onclick="removeBook()">Remove book</button>
+    <button onclick="closeDetails()">Close</button>
 </div>
 
 <div class="row">
@@ -73,7 +87,7 @@
 <!-- JAVASCRIPT starts here-->
 <script>
 
-viewBooks()
+viewBooks();
 
 async function logout(){
     try {
@@ -82,24 +96,24 @@ async function logout(){
       redirect: "follow"
     });
     //if (response.ok){
-        location.href=response.url
+        location.href=response.url;
     //} else {
         //TODO handle errors??
     //}
     
   } catch (e) {
     console.error(e);
-  }
-}
+  };
+};
 
 document.getElementById("description").addEventListener("input", function () {
     this.style.height = "auto";
-    this.style.height = this.scrollHeight + "px"
+    this.style.height = this.scrollHeight + "px";
 });
-const button = document.getElementById("showform")
-const form = document.getElementById("addbook")
-const editbutton = document.getElementById("editbutton")
-const editform = document.getElementById("edit")
+const button = document.getElementById("showform");
+const form = document.getElementById("addbook");
+const editdiv = document.getElementById("edit");
+const editform = document.getElementById("editBookForm");
 //const viewBooksButton = document.getElementById("viewBooksButton");
 
 button.addEventListener("click", function() {
@@ -109,32 +123,53 @@ button.addEventListener("click", function() {
     } else {
         form.style.display = "none";
         button.textContent = "Add book";
-    }
-})
+    };
+});
 
-editbutton.addEventListener("click", function() {
-    if (editform.style.display === "none" || editform.style.display === "") {
-        editform.style.display = "block";
-        editbutton.textContent = "Back";
-    } else {
-        editform.style.display = "none";
-        editbutton.textContent = "Edit";
+editdiv.addEventListener("click", function(event) {
+    if (event.target.closest('#editBookForm')) {
+        return
     }
-})
+    
+    if (editform.style.display === "none" || editform.style.display === "") {
+        editform.style.display = "block"
+    } else {
+        editform.style.display = "none"
+    };
+});
+
+//editform.replaceWith(editform.cloneNode(true));
+
+//editform.addEventListener("submit", async function(event) {
+  //  event.preventDefault();
+   // if (event.target && event.target.id === "editbutton") {
+   //     const editform = document.getElementById("edit");
+   //     editform.style.display = editform.style.display === "none" ? "block" : "none";
+    //};
+//});
+
+//document.addEventListener("click", function(event) {
+  //  if (event.target && event.target.id === "editbutton") {
+   //     const editform = document.getElementById("edit")
+    //    editform.style.display = editform.style.display === "none" ? "block" : "none";
+  //  }
+//})
 
 function getCookie(name) {
     const cookieString = document.cookie;
     if (cookieString) {
-        const cookies = cookieString.split(';')
+        const cookies = cookieString.split(';');
         for (let cookie of cookies) {
-        const [cookieName, cookieValue] = cookie.trim().split('=')
+        const [cookieName, cookieValue] = cookie.trim().split('=');
         if (cookieName === name) {
             return cookieValue;
-        }
-        }
-    }
+        };
+        };
+    };
     return null;
-}
+};
+
+globalJsonData = []
 
 document.getElementById("addBookForm").addEventListener("submit", async function(event) {
     event.preventDefault();  
@@ -142,7 +177,7 @@ document.getElementById("addBookForm").addEventListener("submit", async function
     const User = {
         username: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1],
         password: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1]
-    }
+    };
     console.log(getCookie("SellerID"))
     const Book = {
         sellerId: getCookie("SellerID"),
@@ -156,10 +191,10 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         available: true
     };
 
-    console.log(getCookie(""))
-    console.log(document.cookie)
-    console.log(getCookie('Username'))
-    console.log("Sending book data:", JSON.stringify(User) + JSON.stringify(Book))
+    console.log(getCookie(""));
+    console.log(document.cookie);
+    console.log(getCookie('Username'));
+    console.log("Sending book data:", JSON.stringify(User) + JSON.stringify(Book));
 
     try { 
         const response = await fetch("/add_book", { 
@@ -170,24 +205,24 @@ document.getElementById("addBookForm").addEventListener("submit", async function
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`)
-        }
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        };
 
-        const result = await response.json()
+        const result = await response.json();
 
-        console.log("Added book", result)
-        alert("Added book succesfully")
-        viewBooks()
+        console.log("Added book", result);
+        alert("Added book succesfully");
+        viewBooks();
     } catch (error) { 
-        console.error("Error adding book", error)
-        alert("Error adding book")
-    }
-    document.getElementById("addBookForm").reset()
-}); 
+        console.error("Error adding book", error);
+        alert("Error adding book");
+    };
+    document.getElementById("addBookForm").reset();
+});
 
 async function viewBooks() {
     console.log("cookies:");
-    console.log(document.cookie)
+    console.log(document.cookie);
 
     try {
         const response = await fetch("/viewSellerBook", {
@@ -196,127 +231,172 @@ async function viewBooks() {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`)
-        }
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        };
 
-        const jsonData = await response.json()
-        console.log(jsonData)
+        const jsonData = await response.json();
+        console.log(jsonData);
+        globalJsonData = jsonData.books
 
         if (!jsonData.books || !Array.isArray(jsonData.books)) {
-            throw new Error("Invalid data format")
-        }
+            throw new Error("Invalid data format");
+        };
 
-        const books = document.getElementById("books")
-        books.innerHTML = ""
+        const books = document.getElementById("books");
+        books.innerHTML = "";
 
-        const availableBooks = jsonData.books.filter(book => book.available)
-        const unavailableBooks = jsonData.books.filter(book => !book.available)
+        const availableBooks = jsonData.books.filter(book => book.available);
+        const unavailableBooks = jsonData.books.filter(book => !book.available);
 
         function renderBooks(bookList, sectionTitle) {
             if (bookList.length > 0) {
-                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`
+                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`;
                 bookList.forEach((book) => {
-                    const templateBook = `<div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div>`
-                    books.innerHTML += templateBook
-                })
+                    const templateBook = `<div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div>`;
+                    books.innerHTML += templateBook;
+                });
             } else {
-                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`
-            }
-        }
+                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`;
+            };
+        };
 
-        renderBooks(availableBooks, "Available Books")
-        renderBooks(unavailableBooks, "Unavailable Books")
+        renderBooks(availableBooks, "Available Books");
+        renderBooks(unavailableBooks, "Unavailable Books");
 
         books.addEventListener("click", (event) => {
-        const card = event.target.closest(".card")
+        const card = event.target.closest(".card");
         if (card) {
-            const bookId = parseInt(card.getAttribute("data-bookid"), 10)
-            console.log("Clicked bookId:", bookId)
+            const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+            console.log("Clicked bookId:", bookId);
 
             const book = jsonData.books.find(b => {
-                console.log("Comparing with bookId:", b.bookId)
-                return parseInt(b.bookId, 10) === bookId
+                console.log("Comparing with bookId:", b.bookId);
+                return parseInt(b.bookId, 10) === bookId;
             });
 
             if (book) {
-                console.log("Found book:", book)
-                showBookDetails(book)
+                console.log("Found book:", book);
+                showBookDetails(book);
+                books.addEventListener("click", (event) => {
+                const card = event.target.closest(".card");
+                if (card) {
+                    const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+                    console.log("Clicked bookId:", bookId);
+
+                    const book = jsonData.books.find(b => b.bookId === bookId);
+                    if (book) {
+                        console.log("Found book:", book);
+                        showBookDetails(book);
+                    } else {
+                        console.log("Book not found for bookId:", bookId);
+                    }
+                }
+                });
+                
             } else {
-                console.log("Book not found for bookId:", bookId)
-            }
-        }
-    })
+                console.log("Book not found for bookId:", bookId);
+            };
+        };
+    });
     
 
     } catch (error) {
-        console.error("Error:", error)
-        document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`
-    }
+        console.error("Error:", error);
+        document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`;
+    };
 }
 
 function showBookDetails(book) {
-    console.log("Showing book details for:", book.title)
+    console.log("Showing book details for:", book.title);
 
-    const books = document.getElementById("books")
-    
-    const detailedBookHTML = `
-        <div id="detailedCard" class="detailed-card">
-            <h3>Book Details</h3>
-            <p><b>Title:</b> ${book.title}</p>
-            <p><b>Description:</b> ${book.description || "No description"}</p>
-            <p><b>Price:</b> ${book.price.Int32 ?? "Unknown price"}</p>
-            <p><b>Edition:</b> ${book.edition || "No edition"}</p>
-            <p><b>Stock:</b> ${book.stockAmount}</p>
-            <p><b>Available:</b> ${book.available}</p>
-            <p><b>ISBN:</b> ${book.isbn.Int32 ?? "Unknown ISBN"}</p>
-            <button id="editbutton" onclick="edit(${JSON.stringify(book)})">Edit</button>
-            <button onclick="removeBook()">Remove book</button>
-            <button onclick="closeDetails()">Close</button>
-        </div>`
-    
-    const existingDetailCard = document.getElementById("detailedCard")
-    if (existingDetailCard) {
-        existingDetailCard.remove()
-    }
+    const detailedBook = document.getElementById("detailedCard");
 
-    books.innerHTML += detailedBookHTML
+    document.getElementById("detailedBookTitle").textContent = book.title;
+    document.getElementById("detailedBookDescription").textContent = book.description || "No description";
+    document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
+    document.getElementById("detailedBookEdition").textContent = book.edition || "No edition";
+    document.getElementById("detailedBookStock").textContent = book.stockAmount;
+    document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
+    document.getElementById("detailedBookISBN").textContent = book.isbn.Int32 ?? "Unknown ISBN";
+
+    detailedBook.style.display = "block";
+
+    document.getElementById("editBookButton").addEventListener('click', function() {
+        editBook(book);
+    });
 }
 
 //viewBooksButton.addEventListener("click", viewBooks)
 
 
 function closeDetails() {
-    const books = document.getElementById("books")
-    const detailedCard = document.getElementById("detailedCard")
-    if (detailedCard) {
-        books.removeChild(detailedCard)
-    }
+    const detailedBook = document.getElementById("detailedCard")
+    detailedBook.style.display = "none"
 }
 
-function edit(book) {
-    const editForm = document.getElementById("edit")
-    editForm.style.display = "block"
+let editFormSubmitHandler
 
-    document.querySelector("#editBookForm [name='title']").value = book.title
-    document.querySelector("#editBookForm [name='description']").value = book.description
-    document.querySelector("#editBookForm [name='price']").value = book.price.Int32
-    document.querySelector("#editBookForm [name='edition']").value = book.edition
-    document.querySelector("#editBookForm [name='stockAmount']").value = book.stockAmount
-    document.querySelector("#editBookForm [name='isbn']").value = book.isbn.Int32
+function editBook(book) {
+    console.log("edit called", book)
 
-    document.getElementById("editBookForm").addEventListener("submit", async function(event) {
-        event.preventDefault()
+    const editdiv = document.getElementById("edit")
+    const editform = document.getElementById("editBookForm")
+
+    closeDetails()
+    editdiv.style.display = "block"
+
+    document.getElementById("titleedit").value = book.title
+    document.getElementById("descriptionedit").value = book.description
+    document.getElementById("priceedit").value = book.price.Int32
+    document.getElementById("editionedit").value = book.edition
+    document.getElementById("stockAmountedit").value = book.stockAmount
+    document.getElementById("isbnedit").value = book.isbn.Int32
+
+    const bookId = book.bookId
+
+    if (editFormSubmitHandler) {
+        document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
+    }
+
+    // Remove the old listener if it exists
+    if (editFormSubmitHandler) {
+        document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
+    }
+
+    // Create and store the new listener
+    editFormSubmitHandler = async function(event) {
+        event.preventDefault();
+
+        const bookToEdit = globalJsonData.find(b => b.bookId === bookId);
+
+        if (!bookToEdit) {
+            console.error("Book not found for bookId:", bookId);
+            alert("Error: Book not found.");
+            return;
+        }
 
         const updatedBook = {
-            bookId: book.bookId,
-            title: document.querySelector("#editBookForm [name='title']").value,
-            description: { String: document.querySelector("#editBookForm [name='description']").value, Valid: true },
-            price: { Int32: parseInt(document.querySelector("#editBookForm [name='price']").value, 10), Valid: true },
-            edition: document.querySelector("#editBookForm [name='edition']").value,
-            stockAmount: parseInt(document.querySelector("#editBookForm [name='stockAmount']").value, 10),
-            isbn: { Int32: parseInt(document.querySelector("#editBookForm [name='isbn']").value, 10), Valid: true },
-            available: book.available
-        }
+            bookId: bookToEdit.bookId,
+            title: document.getElementById("titleedit").value,
+            description: {
+                String: document.getElementById("descriptionedit").value.trim(),
+                Valid: document.getElementById("descriptionedit").value.trim() !== ""
+            },
+            price: {
+                Int32: parseInt(document.getElementById("priceedit").value, 10),
+                Valid: document.getElementById("priceedit").value.trim() !== ""
+            },
+            edition: {
+                String: document.getElementById("editionedit").value.trim(),
+                Valid: document.getElementById("editionedit").value.trim() !== ""
+            },
+            stockAmount: parseInt(document.getElementById("stockAmountedit").value, 10),
+            isbn: {
+                Int32: parseInt(document.getElementById("isbnedit").value, 10),
+                Valid: document.getElementById("isbnedit").value.trim() !== ""
+            },
+            available: bookToEdit.available
+        };
 
         try {
             const response = await fetch("/edit_book", {
@@ -324,26 +404,33 @@ function edit(book) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(updatedBook)
             });
-
+            console.log("book:", updatedBook);
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`HTTP ${response.status}: ${errorText}`)
+                console.error("HTTP error:", response.status, errorText);
+                alert("Error editing book. HTTP error: " + response.status);
+                editdiv.style.display = "none";
+                return;
             }
 
-            const result = await response.json()
-            console.log("Edited book", result)
-            alert("Book edited successfully")
-            editForm.style.display = "none"
+            const data = await response.json();
+            console.log(data);
+            alert("Book edited successfully");
             viewBooks();
+            editdiv.style.display = "none";
         } catch (error) {
-            console.error("Error editing book", error)
-            alert("Error editing book")
+            console.error("Error editing book", error);
+            alert("Error editing book");
+            editdiv.style.display = "none";
         }
-    })
+    };
+
+    // Add the new listener
+    document.getElementById("editBookForm").addEventListener("submit", editFormSubmitHandler);
 }
 
 function removeBook() {
-
+    console.log("remove book caled")
 }
 </script>
 
