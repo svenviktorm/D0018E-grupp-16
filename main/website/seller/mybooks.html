@@ -55,6 +55,7 @@
                     <input name="edition" type="text" placeholder="Edition" id="editionedit"><br>
                     <input name="stockAmount" type="number" placeholder="Stock" id="stockAmountedit"><br>
                     <input name="isbn" type="number" placeholder="ISBN" id="isbnedit"><br>
+                    <button onclick="exitEdit()">Back</button>
                     <input type="submit" value="Submit">
                 </form>
             </div>
@@ -358,12 +359,10 @@ function editBook(book) {
         document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
     }
 
-    // Remove the old listener if it exists
     if (editFormSubmitHandler) {
         document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
     }
 
-    // Create and store the new listener
     editFormSubmitHandler = async function(event) {
         event.preventDefault();
 
@@ -425,8 +424,12 @@ function editBook(book) {
         }
     };
 
-    // Add the new listener
     document.getElementById("editBookForm").addEventListener("submit", editFormSubmitHandler);
+}
+
+function exitEdit(){
+    const editdiv = document.getElementById("edit")
+    editdiv.style.display = "none";
 }
 
 function removeBook() {
