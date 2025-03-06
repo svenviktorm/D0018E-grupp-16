@@ -401,7 +401,6 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 		var formattedBooks []map[string]interface{}
 		i := 0
 		for _, book := range books {
-			fmt.Println("Price: ", book.Price)
 			if !book.Price.Valid {
 				book.Price = sql.NullInt32{Int32: 0, Valid: true}
 			}
@@ -414,6 +413,7 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 				"stockAmount": book.StockAmount,
 				"status":      book.Available,
 				"count":       ids[i],
+				"bookid":      book.BookID,
 			})
 			i++
 		}
@@ -472,6 +472,7 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		deleatAll := r.FormValue("deleateAll")
+		fmt.Println("delete all", deleatAll)
 		if deleatAll == "True" {
 			err = ResetShoppingCart(user)
 			fmt.Println("Removed all book from cart")
@@ -712,6 +713,46 @@ func removeBookHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
+	books, err := viewBooks()
+	if err != nil {
+		fmt.Println("Failed to get books: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var formattedBooks []map[string]interface{}
+
+	for _, book := range books {
+		if !book.Price.Valid {
+			book.Price = sql.NullInt32{0, true}
+		}
+		formattedBooks = append(formattedBooks, map[string]interface{}{
+			"bookId":      book.BookID,
+			"title":       book.Title,
+			"sellerid":    book.SellerID,
+			"description": book.Description.String,
+			"price":       book.Price,
+			"edition":     book.Edition.String,
+			"stockAmount": book.StockAmount,
+			"available":   book.Available,
+			"isbn":        book.ISBN,
+		})
+	}
+
+	fmt.Printf("Books: %+v\n", formattedBooks)
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"books":  formattedBooks,
+	})
+	if err != nil {
+		fmt.Println("Failed to encode response: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 // *** Variables ***
 var db *sql.DB
 
@@ -749,6 +790,7 @@ func main() {
 	http.HandleFunc("/changeToSeller", changeToSellerHandler)
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
+	http.HandleFunc("/viewBooks", viewBooksHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)

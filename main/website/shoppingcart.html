@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <link rel="stylesheet" href="../stylesheat.css">
+    <title>Login Page</title>
+</head>
+<body>
+
+<div class="topnav">
+    <a class="active" href="../start.html">Book Store</a>
+    <a  href="../myaccount.html">My Account</a>
+    <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
+    <a class="active" href="../register.html">Register</a>
+    <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
+    <a id="loginoutbutton" href="javascript:void(0);"
+           onclick="logInOut()">Log In</a>
+</div>
+
+<h3>Shopping Cart</h3>
+
+<div id="cartBooks"></div>
+<button id="clearCart">Clear Cart</button>
+<button id="buyButton" onclick="buy()" style="display: none;">Buy</button>
+
+<script>
+
+IDcookie=getCookie("UserID")
+console.log(IDcookie)
+document.getElementById("sellerpageslink").style.display="none"
+document.getElementById("adminpageslink").style.display="none"
+if (IDcookie!=null && IDcookie!=0){
+    console.log("logged in")
+    document.getElementById("loginoutbutton").innerHTML='Log Out'
+    sellercookie=getCookie("IsSeller")
+    if(sellercookie=="true"){
+        document.getElementById("sellerpageslink").style.display="block"
+    }
+    admincookie=getCookie("IsAdmin")
+    if(admincookie=="true"){
+        document.getElementById("adminpageslink").style.display="block"
+    }
+}
+
+async function logInOut(){
+    IDcookie=getCookie("UserID")
+
+    if (IDcookie==null || IDcookie==0){ // not logged in, go to login page
+        location.href="login.html"
+
+    }else{//logged in, logging out
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  }
+}
+}
+function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+}
+
+async function displayCart() {
+    try {
+        const response = await fetch("/API/shoppingcart")
+        const data = await response.json()
+
+        const buyButton = document.getElementById("buyButton")
+
+        if (data.status === "success" && data.books.length > 0) {
+            const cartBooksDiv = document.getElementById("cartBooks")
+            cartBooksDiv.innerHTML = ""
+            console.log(data.books)
+            data.books.forEach(book => {
+                const bookDiv = document.createElement("div")
+                bookDiv.innerHTML = 
+                `<h3>${book.title}</h3>
+                    <p>Price: ${book.price.Int32} * ${book.count}</p>
+                    <p>Quantity: ${book.count}</p>
+                    <button onclick="removeFromCart(${book.bookid})">Remove</button>
+                    <input type="number" value="${book.count}" onchange="updateCount(${book.bookid}, this.value, ${book.stockAmount})">`
+                cartBooksDiv.appendChild(bookDiv)
+            })
+
+            buyButton.style.display = "block"
+
+        } else {
+            const cartBooksDiv = document.getElementById("cartBooks")
+            cartBooksDiv.innerHTML = ""
+            buyButton.style.display = "none"
+            if (data.status != "success"){
+                console.error("Failed to fetch cart:", data)
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching cart:", error)
+    }
+}
+
+async function removeFromCart(bookID) {
+    try {
+        const formData = new URLSearchParams()
+        formData.append("bookID", bookID)
+        await fetch("/API/shoppingcart", {
+            method: "DELETE",
+            body: formData,
+        })
+        await displayCart()
+    } catch (error) {
+        console.error("Error removing from cart:", error)
+    }
+}
+
+async function updateCount(bookID, count, stockAmount) {
+    console.log("bookID:", bookID, "count:", count)
+    
+    if (count > stockAmount) {
+        alert("You cant add more books than that are in stock")
+        return
+    }
+
+    try {
+        const formData = new URLSearchParams()
+        formData.append("bookID", bookID)
+        formData.append("count", count)
+        await fetch("/API/shoppingcart", {
+            method: "PUT",
+            body: formData,
+        })
+        await displayCart()
+    } catch (error) {
+        console.error("Error updating count:", error)
+    }
+    
+}
+
+async function clearCart(){
+    try {
+        const formData = new URLSearchParams()
+        formData.append("deleatAll", "True")
+        console.log("passed formdata")
+        await fetch("/API/shoppingcart", {
+            method: "DELETE",
+            body: formData,
+        });
+        await displayCart()
+        console.log("cleared cart")
+    } catch (error) {
+        console.error("Error clearing cart:", error)
+    }
+}
+
+displayCart()
+
+document.getElementById("clearCart").addEventListener("click", clearCart)
+
+</script>
+
+</body>
+</html>

@@ -375,6 +375,28 @@ func ViewSellerBooks(sellerID int32) ([]Book, error) {
 	return books, nil
 }
 
+func viewBooks() ([]Book, error) {
+
+	var books []Book
+
+	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var book Book
+		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
+		if err != nil {
+			return nil, err
+		}
+		books = append(books, book)
+	}
+
+	return books, nil
+}
+
 func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
 	if err != nil || !successLogin {
@@ -463,10 +485,13 @@ func GetShoppingChartBooks(user User) ([]Book, []int32, error) {
 			return nil, nil, fmt.Errorf("getShoppingChartBooks2: %v", err)
 		}
 		book, err := GetBookById(bookID)
+
+		fmt.Println("book databsefunc", book)
 		if err != nil {
 			return nil, nil, fmt.Errorf("getShoppingChartBooks3: %v", err)
 		}
 		books = append(books, book)
+		fmt.Println(books, "book: ", book)
 		counts = append(counts, count)
 	}
 	return books, counts, nil
@@ -488,13 +513,13 @@ func DisplayBooklist(books []Book) {
 }
 
 func GetBookById(bookID int32) (Book, error) {
-	rows, err := db.Query("SELECT Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
+	rows, err := db.Query("SELECT Id, Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
 	if err != nil {
 		return Book{}, fmt.Errorf("getBookById1: %v", err)
 	}
 	var book Book
 	for rows.Next() {
-		err := rows.Scan(&book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
+		err := rows.Scan(&book.BookID, &book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
 		if err != nil {
 			return Book{}, fmt.Errorf("getBookById2: %v", err)
 		}

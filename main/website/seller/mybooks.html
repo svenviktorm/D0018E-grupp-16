@@ -251,15 +251,40 @@ async function viewBooks() {
 
         function renderBooks(bookList, sectionTitle) {
             if (bookList.length > 0) {
-                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`;
-                bookList.forEach((book) => {
-                    const templateBook = `<div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div>`;
-                    books.innerHTML += templateBook;
-                });
+                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`
+
+                let row
+
+                bookList.forEach((book, index) => {
+                    if (index % 3 === 0) {
+                        row = document.createElement('div')
+                        row.classList.add('row')
+                        books.appendChild(row)
+                    }
+
+                    const col = document.createElement('div')
+                    col.classList.add('col-md-4')
+
+                    const templateBook = `
+                        <div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}">
+                            <div class="container">
+                                <h4><b>${book.title}</b></h4>
+                                <p>Price: ${book.price.Int32 ?? "Unknown"}</p>
+                                <p>Edition: ${book.edition || "Unknown"}</p>
+                                <p>Stock: ${book.stockAmount}</p>
+                                <p>Available: ${book.available ? "Yes" : "No"}</p>
+                                <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
+                            </div>
+                        </div>
+                    `
+
+                    col.innerHTML = templateBook
+                    row.appendChild(col)
+                })
             } else {
-                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`;
-            };
-        };
+                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`
+            }
+        }
 
         renderBooks(availableBooks, "Available Books");
         renderBooks(unavailableBooks, "Unavailable Books");

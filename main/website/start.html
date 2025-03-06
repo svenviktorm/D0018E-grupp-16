@@ -10,7 +10,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-    <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
+   <!-- <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>-->
 </head>
 
 <body>
@@ -110,46 +110,203 @@ function getCookie(name) {
 
 </div> 
 
-<div class="flex-container">
-    <div id="viewCard" style="display: none;">
-       <div class="card">
-      </div>
-    </div>
+<div id="detailedCard" class="detailed-card" style="display:none;">
+    <h3 id="detailedBookTitle"></h3>
+    <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
+    <p><b>Price:</b> <span id="detailedBookPrice"></span></p>
+    <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
+    <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
+    <p><b>Available:</b> <span id="detailedBookAvailable"></span></p>
+    <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
+    <button onclick="addToCart()">Add to cart</button>
+    <input type="number" name="count" id="count">
+    <button onclick="closeDetails()">Close</button>
+    
 </div>
 
-<a href="start/seller.html">seller</a>
+</div>
 
+<div class="row">
+    <div id="books"></div>
+</div>
+
+<div class="row">
+    <div id="detailedBooksCard"></div>
 </div>
 
 <script>
-var books = [
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-];
 
-$.each(books, function (i) {
-    if (i % 4 === 0) {
-        $('#books').append('<div class="row"></div>'); 
+viewBooks()
+
+globalJsonData = []
+
+async function viewBooks() {
+    try {
+        const response = await fetch("/viewBooks", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        };
+
+        const jsonData = await response.json();
+        console.log(jsonData);
+        globalJsonData = jsonData.books
+
+        if (!jsonData.books || !Array.isArray(jsonData.books)) {
+            throw new Error("Invalid data format");
+        };
+
+        const books = document.getElementById("books");
+        books.innerHTML = "";
+
+        const availableBooks = jsonData.books.filter(book => book.available);
+
+        function renderBooks(bookList, sectionTitle) {
+            if (bookList.length > 0) {
+                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`
+
+                let row
+
+                bookList.forEach((book, index) => {
+                    if (index % 3 === 0) {
+                        row = document.createElement('div')
+                        row.classList.add('row')
+                        books.appendChild(row)
+                    }
+
+                    const col = document.createElement('div')
+                    col.classList.add('col-md-4')
+
+                    const templateBook = `
+                        <div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}">
+                            <div class="container">
+                                <h4><b>${book.title}</b></h4>
+                                <p>Price: ${book.price.Int32 ?? "Unknown"}</p>
+                                <p>Edition: ${book.edition || "Unknown"}</p>
+                                <p>Stock: ${book.stockAmount}</p>
+                                <p>Available: ${book.available ? "Yes" : "No"}</p>
+                                <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
+                            </div>
+                        </div>
+                    `
+
+                    col.innerHTML = templateBook
+                    row.appendChild(col)
+                })
+            } else {
+                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`
+            }
+        }
+
+        renderBooks(availableBooks, "Books");
+
+        books.addEventListener("click", (event) => {
+        const card = event.target.closest(".card");
+        if (card) {
+            const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+            console.log("Clicked bookId:", bookId);
+
+            const book = jsonData.books.find(b => {
+                console.log("Comparing with bookId:", b.bookId);
+                return parseInt(b.bookId, 10) === bookId;
+            });
+
+            if (book) {
+                console.log("Found book:", book);
+                showBookDetails(book);
+                books.addEventListener("click", (event) => {
+                const card = event.target.closest(".card");
+                if (card) {
+                    const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+                    console.log("Clicked bookId:", bookId);
+
+                    const book = jsonData.books.find(b => b.bookId === bookId);
+                    if (book) {
+                        console.log("Found book:", book);
+                        showBookDetails(book);
+                    } else {
+                        console.log("Book not found for bookId:", bookId);
+                    }
+                }
+                });
+                
+            } else {
+                console.log("Book not found for bookId:", bookId);
+            };
+        };
+    });
+    
+
+    } catch (error) {
+        console.error("Error:", error);
+        document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`;
+    };
+}
+
+function showBookDetails(book) {
+    console.log("Showing book details for:", book.title);
+
+    const detailedBook = document.getElementById("detailedCard");
+
+    detailedBook.setAttribute("data-bookid", book.bookId)
+    detailedBook.setAttribute("data-stock", book.stockAmount)
+
+    document.getElementById("detailedBookTitle").textContent = book.title;
+    document.getElementById("detailedBookDescription").textContent = book.description || "No description";
+    document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
+    document.getElementById("detailedBookEdition").textContent = book.edition || "No edition";
+    document.getElementById("detailedBookStock").textContent = book.stockAmount;
+    document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
+    document.getElementById("detailedBookISBN").textContent = book.isbn.Int32 ?? "Unknown ISBN";
+
+    detailedBook.style.display = "block";
+
+    document.getElementById("editBookButton").addEventListener('click', function() {
+        editBook(book);
+    });
+}
+
+function closeDetails() {
+    const detailedBook = document.getElementById("detailedCard")
+    detailedBook.style.display = "none"
+}
+
+async function addToCart() {
+    let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
+    let count = document.getElementById("count").value;
+    let stockAmount = document.getElementById("detailedCard").getAttribute("data-stock")
+
+    if (count > stockAmount) {
+        alert("You cant add more books than that are in stock")
+        return
     }
 
-    var templateBook = '<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>' + books[i].Title + '</b></h4></div></div></div>';
-    $('#books').append(templateBook);
-})
+    try {
+        const formData = new URLSearchParams();
+        formData.append("bookID", bookId);
+        formData.append("count", count);
+        console.log(URLSearchParams)
 
-const button = document.getElementById("showCard");
-const card = document.getElementById("viewCard");
+        const response = await fetch("/API/shoppingcart", {
+            method: "POST",
+            body: formData,
+        });
 
-button.addEventListener("click", function() {
-    if (card.style.display === "none" || card.style.display === "") {
-        card.style.display = "block";
-    } else {
-        card.style.display = "none";
+        if (response.ok) {
+            console.log("Book added to cart successfully!");
+            // Optionally, provide feedback to the user (e.g., a message).
+        } else {
+            console.error("Failed to add book to cart.");
+            // Handle errors (e.g., show an error message).
+        }
+    } catch (error) {
+        console.error("Error adding to cart:", error);
+        // Handle network errors or other exceptions.
     }
-})
+}
 
 </script>
 
