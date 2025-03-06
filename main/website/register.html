@@ -45,6 +45,10 @@ async function sendRegister() {
     });
     console.log(response)
     if (response.ok){
+      console.log("updated register page used")
+      alert("Account successfully created, please log in")
+      location.replace("/login.html")
+      /*
         const user=await response.json()
         console.log(user)
         console.log("kalle anka")
@@ -67,6 +71,7 @@ async function sendRegister() {
             location.replace("/")
             //TODO get right outcome but with strange error messages in console, figure out if need to fix something
         }
+        */
 
     } else if (response.status==404) {
         document.getElementById("registerErrortext").innerText ="Register failed. Username taken."

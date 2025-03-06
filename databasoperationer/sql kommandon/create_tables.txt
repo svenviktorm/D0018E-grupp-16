@@ -1,7 +1,11 @@
+    DROP TABLE IF EXISTS InShoppingCart;
+    DROP TABLE IF EXISTS BookReviews;
+    DROP TABLE IF EXISTS Orders_books;
+    DROP TABLE IF EXISTS Orders;
     DROP TABLE IF EXISTS Books;
     DROP TABLE IF EXISTS Sellers;
     DROP TABLE IF EXISTS Users;
-    DROP TABLE IF EXISTS InShoppingCart;
+   
 
     CREATE TABLE Users(
         Id INT NOT NULL AUTO_INCREMENT,
@@ -25,6 +29,7 @@
 CREATE TABLE Books(
     Id INT NOT NULL AUTO_INCREMENT,
     Title VARCHAR(100) NOT NULL,
+    Author VARCHAR(100) NOT NULL,
     SellerId INT NOT NULL,
     Edition VARCHAR(50),
     Description TEXT,
@@ -36,7 +41,7 @@ CREATE TABLE Books(
     Price INT CHECK (PRICE >= 0),
     PRIMARY KEY (ID),
     FOREIGN KEY (SellerID) REFERENCES Sellers(ID),
-    FULLTEXT(Title)
+    FULLTEXT(Author)
 );
 
 CREATE TABLE InShoppingCart(
@@ -47,3 +52,39 @@ CREATE TABLE InShoppingCart(
     FOREIGN KEY (UserID) REFERENCES Users(Id),
     FOREIGN KEY (BookID) REFERENCES Books(Id)
 );
+
+CREATE TABLE Orders(
+    Id INT NOT NULL AUTO_INCREMENT,
+    SellerID INT NOT NULL,
+    CustomerID INT NOT NULL,
+    TimeEntered TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    TimeConfirmed TIMESTAMP, 
+    TimeSent TIMESTAMP,
+    TimePaymentReceived TIMESTAMP,
+    PaymentReceived BOOL NOT NULL DEFAULT FALSE,
+    PaymentMethod ENUM('invoice', 'card') NOT NULL,
+    Status ENUM('reserved', 'confirmed', 'payed', 'sent', 'canceled', 'returned') NOT NULL,
+    DeliveryAddress VARCHAR(250),
+    BillingAddress VARCHAR(250),
+    PRIMARY KEY (ID),
+    FOREIGN KEY (CustomerID) REFERENCES Users(Id),
+    FOREIGN KEY (SellerID) REFERENCES Sellers(Id)
+);
+
+CREATE TABLE Orders_books(
+    OrderID INT NOT NULL,
+    BookID INT NOT NULL,
+    Price INT NOT NULL CHECK (Price > 0),
+    Quantity INT NOT NULL CHECK (Quantity > 0)
+);
+
+CREATE TABLE BookReviews(
+    Id INT NOT NULL,
+    BookId INT NOT NULL,
+    UserId INT NOT NULL,
+    Text VARCHAR(2500),
+    Rating TINYINT ,
+    PRIMARY KEY (Id),
+    FOREIGN KEY (BookId) REFERENCES Books(Id),
+    FOREIGN KEY (UserId) REFERENCES Users(Id)
+)
