@@ -21,24 +21,6 @@
     <a  href="javascript:void(0);"
            onclick="logout()">Log Out</a>
 </div>
-<script>
-async function logout(){
-    try {
-    const response = await fetch("/API/sessions", {
-      method: "DELETE",
-      redirect: "follow"
-    });
-    //if (response.ok){
-        location.href=response.url
-    //} else {
-        //TODO handle errors??
-    //}
-    
-  } catch (e) {
-    console.error(e);
-  }
-}
-</script>
 
 <button id="showform">Add book</button>
 
@@ -61,26 +43,78 @@ async function logout(){
     </div>
 </div>
 
+<div class="flex-container">
+    <div id="edit" style="display: none;">
+        <card>
+            <div class="flex-container">
+                <form id="editBookForm">   
+                    <h3><b>Edit book</b></h3>
+                    <input name="title" type="text" placeholder="Title" id="titleedit"><br>
+                    <textarea name="description" placeholder="Description" id="descriptionedit" rows="1" style="resize: none; overflow: hidden;"></textarea><br>
+                    <input name="price" type="number" placeholder="Price" id="priceedit"><br>
+                    <input name="edition" type="text" placeholder="Edition" id="editionedit"><br>
+                    <input name="stockAmount" type="number" placeholder="Stock" id="stockAmountedit"><br>
+                    <input name="isbn" type="number" placeholder="ISBN" id="isbnedit"><br>
+                    <button onclick="exitEdit()">Back</button>
+                    <input type="submit" value="Submit">
+                </form>
+            </div>
+        </card>
+    </div>
+</div>
+
+<div id="detailedCard" class="detailed-card" style="display:none;">
+    <h3 id="detailedBookTitle"></h3>
+    <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
+    <p><b>Price:</b> <span id="detailedBookPrice"></span></p>
+    <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
+    <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
+    <p><b>Available:</b> <span id="detailedBookAvailable"></span></p>
+    <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
+    <button id="editBookButton">Edit</button>
+    <button onclick="removeBook()">Remove book</button>
+    <button onclick="closeDetails()">Close</button>
+</div>
+
 <div class="row">
     <!--<button id="viewBooksButton">books</button>-->
     <div id="books"></div>
-
-    Old/unavailable books:
-    <div id="old_books"></div>
 </div>
 
+<div class="row">
+    <div id="detailedBooksCard"></div>
+</div>
     
 <!-- JAVASCRIPT starts here-->
 <script>
 
-viewBooks()
+viewBooks();
+
+async function logout(){
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url;
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  };
+};
 
 document.getElementById("description").addEventListener("input", function () {
-    this.style.height = "auto"; 
+    this.style.height = "auto";
     this.style.height = this.scrollHeight + "px";
 });
 const button = document.getElementById("showform");
 const form = document.getElementById("addbook");
+const editdiv = document.getElementById("edit");
+const editform = document.getElementById("editBookForm");
 //const viewBooksButton = document.getElementById("viewBooksButton");
 
 button.addEventListener("click", function() {
@@ -90,8 +124,37 @@ button.addEventListener("click", function() {
     } else {
         form.style.display = "none";
         button.textContent = "Add book";
+    };
+});
+
+editdiv.addEventListener("click", function(event) {
+    if (event.target.closest('#editBookForm')) {
+        return
     }
-})
+    
+    if (editform.style.display === "none" || editform.style.display === "") {
+        editform.style.display = "block"
+    } else {
+        editform.style.display = "none"
+    };
+});
+
+//editform.replaceWith(editform.cloneNode(true));
+
+//editform.addEventListener("submit", async function(event) {
+  //  event.preventDefault();
+   // if (event.target && event.target.id === "editbutton") {
+   //     const editform = document.getElementById("edit");
+   //     editform.style.display = editform.style.display === "none" ? "block" : "none";
+    //};
+//});
+
+//document.addEventListener("click", function(event) {
+  //  if (event.target && event.target.id === "editbutton") {
+   //     const editform = document.getElementById("edit")
+    //    editform.style.display = editform.style.display === "none" ? "block" : "none";
+  //  }
+//})
 
 function getCookie(name) {
     const cookieString = document.cookie;
@@ -101,11 +164,13 @@ function getCookie(name) {
         const [cookieName, cookieValue] = cookie.trim().split('=');
         if (cookieName === name) {
             return cookieValue;
-        }
-        }
-    }
+        };
+        };
+    };
     return null;
-}
+};
+
+globalJsonData = []
 
 document.getElementById("addBookForm").addEventListener("submit", async function(event) {
     event.preventDefault();  
@@ -113,10 +178,10 @@ document.getElementById("addBookForm").addEventListener("submit", async function
     const User = {
         username: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1],
         password: document.cookie.split("; ").find((row) => row.startsWith("Username="))?.split("=")[1]
-    }
-    console.log(getCookie("UserID"))
+    };
+    console.log(getCookie("SellerID"))
     const Book = {
-        sellerId: getCookie("UserID"),
+        sellerId: getCookie("SellerID"),
         title: document.getElementById("title").value,
         author: document.getElementById("author").value,
         description: {String: document.getElementById("description").value, Valid: true},
@@ -127,9 +192,9 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         available: true
     };
 
-    console.log(getCookie(""))
-    console.log(document.cookie)
-    console.log(getCookie('Username'))
+    console.log(getCookie(""));
+    console.log(document.cookie);
+    console.log(getCookie('Username'));
     console.log("Sending book data:", JSON.stringify(User) + JSON.stringify(Book));
 
     try { 
@@ -142,63 +207,307 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
+        };
 
         const result = await response.json();
 
         console.log("Added book", result);
         alert("Added book succesfully");
+        viewBooks();
     } catch (error) { 
         console.error("Error adding book", error);
         alert("Error adding book");
-    }
+    };
     document.getElementById("addBookForm").reset();
-}); 
-
+});
 
 async function viewBooks() {
-    
-    console.log("cookies:")
-    console.log(document.cookie)
-    try {
+    console.log("cookies:");
+    console.log(document.cookie);
 
+    try {
         const response = await fetch("/viewSellerBook", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {"Content-Type": "application/json"},
         });
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-        }
+        };
 
         const jsonData = await response.json();
-        //nsole.log("1");
         console.log(jsonData);
+        globalJsonData = jsonData.books
 
         if (!jsonData.books || !Array.isArray(jsonData.books)) {
             throw new Error("Invalid data format");
-        }
+        };
 
         const books = document.getElementById("books");
-        books.innerHTML = ""; 
+        books.innerHTML = "";
 
-        jsonData.books.forEach((book, i) => {
-            if (i % 4 === 0) {
-                books.innerHTML += "<div class='row'></div>";
+        const availableBooks = jsonData.books.filter(book => book.available);
+        const unavailableBooks = jsonData.books.filter(book => !book.available);
+
+        function renderBooks(bookList, sectionTitle) {
+            if (bookList.length > 0) {
+                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`
+
+                let row
+
+                bookList.forEach((book, index) => {
+                    if (index % 3 === 0) {
+                        row = document.createElement('div')
+                        row.classList.add('row')
+                        books.appendChild(row)
+                    }
+
+                    const col = document.createElement('div')
+                    col.classList.add('col-md-4')
+
+                    const templateBook = `
+                        <div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}">
+                            <div class="container">
+                                <h4><b>${book.title}</b></h4>
+                                <p>Price: ${book.price.Int32 ?? "Unknown"}</p>
+                                <p>Edition: ${book.edition || "Unknown"}</p>
+                                <p>Stock: ${book.stockAmount}</p>
+                                <p>Available: ${book.available ? "Yes" : "No"}</p>
+                                <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
+                            </div>
+                        </div>
+                    `
+
+                    col.innerHTML = templateBook
+                    row.appendChild(col)
+                })
+            } else {
+                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`
             }
+        }
 
-            const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>Available: ${book.available}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
-            books.innerHTML += templateBook;
-        });
+        renderBooks(availableBooks, "Available Books");
+        renderBooks(unavailableBooks, "Unavailable Books");
+
+        books.addEventListener("click", (event) => {
+        const card = event.target.closest(".card");
+        if (card) {
+            const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+            console.log("Clicked bookId:", bookId);
+
+            const book = jsonData.books.find(b => {
+                console.log("Comparing with bookId:", b.bookId);
+                return parseInt(b.bookId, 10) === bookId;
+            });
+
+            if (book) {
+                console.log("Found book:", book);
+                showBookDetails(book);
+                books.addEventListener("click", (event) => {
+                const card = event.target.closest(".card");
+                if (card) {
+                    const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+                    console.log("Clicked bookId:", bookId);
+
+                    const book = jsonData.books.find(b => b.bookId === bookId);
+                    if (book) {
+                        console.log("Found book:", book);
+                        showBookDetails(book);
+                    } else {
+                        console.log("Book not found for bookId:", bookId);
+                    }
+                }
+                });
+                
+            } else {
+                console.log("Book not found for bookId:", bookId);
+            };
+        };
+    });
+    
 
     } catch (error) {
         console.error("Error:", error);
         document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`;
+    };
+}
+
+function showBookDetails(book) {
+    console.log("Showing book details for:", book.title);
+
+    const detailedBook = document.getElementById("detailedCard");
+
+    detailedBook.setAttribute("data-bookid", book.bookId)
+
+    document.getElementById("detailedBookTitle").textContent = book.title;
+    document.getElementById("detailedBookDescription").textContent = book.description || "No description";
+    document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
+    document.getElementById("detailedBookEdition").textContent = book.edition || "No edition";
+    document.getElementById("detailedBookStock").textContent = book.stockAmount;
+    document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
+    document.getElementById("detailedBookISBN").textContent = book.isbn.Int32 ?? "Unknown ISBN";
+
+    detailedBook.style.display = "block";
+
+    document.getElementById("editBookButton").addEventListener('click', function() {
+        editBook(book);
+    });
+}
+
+//viewBooksButton.addEventListener("click", viewBooks)
+
+
+function closeDetails() {
+    const detailedBook = document.getElementById("detailedCard")
+    detailedBook.style.display = "none"
+}
+
+let editFormSubmitHandler
+
+function editBook(book) {
+    console.log("edit called", book)
+
+    const editdiv = document.getElementById("edit")
+    const editform = document.getElementById("editBookForm")
+
+    closeDetails()
+    editdiv.style.display = "block"
+
+    document.getElementById("titleedit").value = book.title
+    document.getElementById("descriptionedit").value = book.description
+    document.getElementById("priceedit").value = book.price.Int32
+    document.getElementById("editionedit").value = book.edition
+    document.getElementById("stockAmountedit").value = book.stockAmount
+    document.getElementById("isbnedit").value = book.isbn.Int32
+
+    const bookId = book.bookId
+
+    if (editFormSubmitHandler) {
+        document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
     }
 
-}
-//viewBooksButton.addEventListener("click", viewBooks);
+    if (editFormSubmitHandler) {
+        document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
+    }
 
+    editFormSubmitHandler = async function(event) {
+        event.preventDefault();
+
+        const bookToEdit = globalJsonData.find(b => b.bookId === bookId);
+
+        if (!bookToEdit) {
+            console.error("Book not found for bookId:", bookId);
+            alert("Error: Book not found.");
+            return;
+        }
+
+        const updatedBook = {
+            bookId: bookToEdit.bookId,
+            title: document.getElementById("titleedit").value,
+            description: {
+                String: document.getElementById("descriptionedit").value.trim(),
+                Valid: document.getElementById("descriptionedit").value.trim() !== ""
+            },
+            price: {
+                Int32: parseInt(document.getElementById("priceedit").value, 10),
+                Valid: document.getElementById("priceedit").value.trim() !== ""
+            },
+            edition: {
+                String: document.getElementById("editionedit").value.trim(),
+                Valid: document.getElementById("editionedit").value.trim() !== ""
+            },
+            stockAmount: parseInt(document.getElementById("stockAmountedit").value, 10),
+            isbn: {
+                Int32: parseInt(document.getElementById("isbnedit").value, 10),
+                Valid: document.getElementById("isbnedit").value.trim() !== ""
+            },
+            available: bookToEdit.available
+        };
+
+        try {
+            const response = await fetch("/edit_book", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedBook)
+            });
+            console.log("book:", updatedBook);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("HTTP error:", response.status, errorText);
+                alert("Error editing book. HTTP error: " + response.status);
+                editdiv.style.display = "none";
+                return;
+            }
+
+            const data = await response.json();
+            console.log(data);
+            alert("Book edited successfully");
+            viewBooks();
+            editdiv.style.display = "none";
+        } catch (error) {
+            console.error("Error editing book", error);
+            alert("Error editing book");
+            editdiv.style.display = "none";
+        }
+    };
+
+    document.getElementById("editBookForm").addEventListener("submit", editFormSubmitHandler);
+}
+
+function exitEdit(){
+    const editdiv = document.getElementById("edit")
+    editdiv.style.display = "none";
+}
+
+async function removeBook() {
+    console.log("remove book caled")
+
+    let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
+    
+    bookId = parseInt(bookId, 10)
+    console.log("bookId: ", bookId)
+
+    if (!bookId) {
+        alert("No book selected for removal");
+        return;
+    }
+
+    const confirmed = confirm("Are you sure you want to make this book unavailable?")
+    if (!confirmed) {
+        return
+    }
+
+    try {
+        const response = await fetch("/remove_book", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({available: false, bookId: bookId})
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
+
+        const bookElement = document.getElementById(`book-${bookId}`)
+        if (bookElement) {
+            const availableText = bookElement.querySelector('p:last-child')
+            if (availableText) {
+                availableText.textContent = "Available: No"
+            }
+        }
+        viewBooks()
+        closeDetails()
+
+        alert("Book marked as unavailable")
+
+    } catch (error) {
+        console.error("Error marking book as unavailable:", error)
+        alert("Error marking book as unavailable")
+    }
+}
 
 </script>
 
