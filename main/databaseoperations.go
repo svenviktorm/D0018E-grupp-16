@@ -27,7 +27,9 @@ type Book struct {
 	BookID      int32          `json:"bookId"`
 	Title       string         `json:"title"`
 	SellerID    int32          `json:"sellerId"`
+
 	Author      string         `json:"author"`
+
 	Edition     sql.NullString `json:"edition"`
 	Description sql.NullString `json:"description"`
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
@@ -287,7 +289,21 @@ func changeToSeller(id int32, username string, password string, email sql.NullSt
 	return sellerid, nil
 }
 
+func editBook(book Book) (int32, error) {
+	result, err := db.Exec("UPDATE Books SET Title = ?, Description = ?, Price = ?, Edition = ?, StockAmount = ?, ISBN = ? WHERE Id = ?", book.Title, book.Description, book.Price, book.Edition, book.StockAmount, book.ISBN, book.BookID)
+	if err != nil {
+		return -1, fmt.Errorf("addBook: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return -2, fmt.Errorf("addBook: %v", err)
+	}
+
+	return int32(id), nil
+}
+
 /*
+
 func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 	var books []Book
 	var ids []int32
@@ -317,7 +333,15 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 }
 */
 
+
+func removeBook(available bool, bookId int32) error {
+	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
+	return nil
+}
+
+
 func SearchBooksByTitle(titlesearch string, onlyAvailable bool) ([]Book, error) {
+
 	var err error
 	var rows *sql.Rows
 
@@ -392,7 +416,7 @@ func extractBooksFromSQLresult(rows *sql.Rows) ([]Book, error) {
 func ViewSellerBooks(sellerID int32) ([]Book, error) {
 	var books []Book
 
-	rows, err := db.Query("SELECT Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings FROM Books WHERE SellerID = ?", sellerID)
+	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books WHERE SellerID = ?", sellerID)
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +424,29 @@ func ViewSellerBooks(sellerID int32) ([]Book, error) {
 
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings)
+		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
+		if err != nil {
+			return nil, err
+		}
+		books = append(books, book)
+	}
+
+	return books, nil
+}
+
+func viewBooks() ([]Book, error) {
+
+	var books []Book
+
+	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var book Book
+		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
 		if err != nil {
 			return nil, err
 		}
@@ -498,10 +544,13 @@ func GetShoppingChartBooks(user User) ([]Book, []int32, error) {
 			return nil, nil, fmt.Errorf("getShoppingChartBooks2: %v", err)
 		}
 		book, err := GetBookById(bookID)
+
+		fmt.Println("book databsefunc", book)
 		if err != nil {
 			return nil, nil, fmt.Errorf("getShoppingChartBooks3: %v", err)
 		}
 		books = append(books, book)
+		fmt.Println(books, "book: ", book)
 		counts = append(counts, count)
 	}
 	return books, counts, nil
@@ -525,13 +574,13 @@ func DisplayBooklist(books []Book) {
 */
 
 func GetBookById(bookID int32) (Book, error) {
-	rows, err := db.Query("SELECT Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
+	rows, err := db.Query("SELECT Id, Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
 	if err != nil {
 		return Book{}, fmt.Errorf("getBookById1: %v", err)
 	}
 	var book Book
 	for rows.Next() {
-		err := rows.Scan(&book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
+		err := rows.Scan(&book.BookID, &book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
 		if err != nil {
 			return Book{}, fmt.Errorf("getBookById2: %v", err)
 		}

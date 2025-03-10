@@ -335,9 +335,6 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(SellerIDint)
 	book.SellerID = int32(SellerIDint)
 	fmt.Println("Book: ", book.SellerID)
-	for a, c := range r.Cookies() {
-		fmt.Println(c, " | ", a)
-	}
 
 	if err != nil {
 		fmt.Println("Failed to get cookie: ", err)
@@ -398,6 +395,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			book.Price = sql.NullInt32{0, true}
 		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
+			"bookId":      book.BookID,
 			"title":       book.Title,
 			"sellerid":    book.SellerID,
 			"description": book.Description.String,
@@ -445,7 +443,6 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 		var formattedBooks []map[string]interface{}
 		i := 0
 		for _, book := range books {
-			fmt.Println("Price: ", book.Price)
 			if !book.Price.Valid {
 				book.Price = sql.NullInt32{Int32: 0, Valid: true}
 			}
@@ -458,6 +455,7 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 				"stockAmount": book.StockAmount,
 				"status":      book.Available,
 				"count":       ids[i],
+				"bookid":      book.BookID,
 			})
 			i++
 		}
@@ -516,6 +514,7 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		deleatAll := r.FormValue("deleateAll")
+		fmt.Println("delete all", deleatAll)
 		if deleatAll == "True" {
 			err = ResetShoppingCart(user)
 			fmt.Println("Removed all book from cart")
@@ -672,6 +671,130 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func editBookHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("editBookHandler called")
+	if r.Method != http.MethodPost {
+		fmt.Println("Invalid request method ", r.Method)
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var book Book
+	fmt.Println("body: ", r.Body)
+
+	err := json.NewDecoder(r.Body).Decode(&book)
+	if err != nil {
+		fmt.Println("error decoding json:", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Printf("Decoded Book: %+v\n", book)
+
+	IDcookie, err := r.Cookie("UserID")
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		http.Error(w, "Failed to get cookie: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// convert cookie to integer
+	sellerId := IDcookie.Value
+	SellerIDint, err := strconv.Atoi(sellerId)
+	if err != nil {
+		fmt.Println("Failed to convert cookie to integer:", err)
+		http.Error(w, "Invalid seller ID", http.StatusBadRequest)
+		return
+	}
+
+	book.SellerID = int32(SellerIDint)
+	fmt.Println("Book SellerID:", book.SellerID)
+
+	id, err := editBook(book)
+	if err != nil {
+		fmt.Println("Failed to edit book: ", err)
+		http.Error(w, "Failed to edit book: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"status":  "success",
+		"message": "Book edited successfully",
+		"id":      id,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		fmt.Println("Error encoding JSON response:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("JSON response sent:", response)
+}
+
+func removeBookHandler(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Available bool  `json:"available"`
+		BookId    int32 `json:"bookId"`
+	}
+	fmt.Println("availaible: ", data.Available, "bookid: ", data.BookId)
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		fmt.Println("Error decoding json", err)
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	err = removeBook(data.Available, data.BookId)
+	if err != nil {
+		http.Error(w, "Error updating book availability", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
+	books, err := viewBooks()
+	if err != nil {
+		fmt.Println("Failed to get books: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var formattedBooks []map[string]interface{}
+
+	for _, book := range books {
+		if !book.Price.Valid {
+			book.Price = sql.NullInt32{0, true}
+		}
+		formattedBooks = append(formattedBooks, map[string]interface{}{
+			"bookId":      book.BookID,
+			"title":       book.Title,
+			"sellerid":    book.SellerID,
+			"description": book.Description.String,
+			"price":       book.Price,
+			"edition":     book.Edition.String,
+			"stockAmount": book.StockAmount,
+			"available":   book.Available,
+			"isbn":        book.ISBN,
+		})
+	}
+
+	fmt.Printf("Books: %+v\n", formattedBooks)
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"books":  formattedBooks,
+	})
+	if err != nil {
+		fmt.Println("Failed to encode response: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 // *** Variables ***
 var db *sql.DB
 
@@ -707,6 +830,9 @@ func main() {
 	http.HandleFunc("/viewSellerBook", viewBooksBySellerHandler)
 	http.HandleFunc("/email", changeEmailHandler)
 	http.HandleFunc("/changeToSeller", changeToSellerHandler)
+	http.HandleFunc("/edit_book", editBookHandler)
+	http.HandleFunc("/remove_book", removeBookHandler)
+	http.HandleFunc("/viewBooks", viewBooksHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)
