@@ -122,11 +122,12 @@ function getCookie(name) {
 
 <div id="detailedCard" class="detailed-card" style="display:none;">
     <h3 id="detailedBookTitle"></h3>
+    <p><b>Author:</b> <span id="detailedBookAuthor"></span></p>
     <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
     <p><b>Price:</b> <span id="detailedBookPrice"></span></p>
     <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
     <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
-    <p><b>Available:</b> <span id="detailedBookAvailable"></span></p>
+    <!--<p><b>Available:</b> <span id="detailedBookAvailable"></span></p>-->
     <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
     <button onclick="addToCart()">Add to cart</button>
     <input type="number" name="count" id="count">
@@ -149,6 +150,7 @@ function getCookie(name) {
 <script>
 
   const form = document.querySelector("#searchform");
+  const books = document.getElementById("books");
 
 form.addEventListener("submit", (event) => {
   console.log("submit called")
@@ -156,83 +158,13 @@ form.addEventListener("submit", (event) => {
   searchBook();
 });
   
-  
-  
-
-//viewBooks()
-
-globalJsonData = []
-
-async function viewBooks() {
-    try {
-        const response = await fetch("/viewBooks", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-        };
-
-        const jsonData = await response.json();
-        console.log(jsonData);
-        globalJsonData = jsonData.books
-
-        if (!jsonData.books || !Array.isArray(jsonData.books)) {
-            throw new Error("Invalid data format");
-        };
-
-        const books = document.getElementById("books");
-        books.innerHTML = "";
-
-        const availableBooks = jsonData.books.filter(book => book.available);
-
-        function renderBooks(bookList, sectionTitle) {
-            if (bookList.length > 0) {
-                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`
-
-                let row
-
-                bookList.forEach((book, index) => {
-                    if (index % 3 === 0) {
-                        row = document.createElement('div')
-                        row.classList.add('row')
-                        books.appendChild(row)
-                    }
-
-                    const col = document.createElement('div')
-                    col.classList.add('col-md-4')
-
-                    const templateBook = `
-                        <div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}">
-                            <div class="container">
-                                <h4><b>${book.title}</b></h4>
-                                <p>Price: ${book.price.Int32 ?? "Unknown"}</p>
-                                <p>Edition: ${book.edition || "Unknown"}</p>
-                                <p>Stock: ${book.stockAmount}</p>
-                                <p>Available: ${book.available ? "Yes" : "No"}</p>
-                                <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
-                            </div>
-                        </div>
-                    `
-
-                    col.innerHTML = templateBook
-                    row.appendChild(col)
-                })
-            } else {
-                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`
-            }
-        }
-
-        renderBooks(availableBooks, "Books");
-
-        books.addEventListener("click", (event) => {
+books.addEventListener("click", (event) => {
         const card = event.target.closest(".card");
         if (card) {
             const bookId = parseInt(card.getAttribute("data-bookid"), 10);
             console.log("Clicked bookId:", bookId);
 
-            const book = jsonData.books.find(b => {
+            const book = globalJsonData.find(b => {
                 console.log("Comparing with bookId:", b.bookId);
                 return parseInt(b.bookId, 10) === bookId;
             });
@@ -261,13 +193,88 @@ async function viewBooks() {
             };
         };
     });
+  
+
+//viewBooks()
+
+globalJsonData = []
+
+/*
+async function viewBooks() {
+    try {
+        const response = await fetch("/viewBooks", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+        };
+
+        const jsonData = await response.json();
+        console.log(jsonData);
+        globalJsonData = jsonData.books
+
+        if (!jsonData.books || !Array.isArray(jsonData.books)) {
+            throw new Error("Invalid data format");
+        };
+
+
+        
+
+        const availableBooks = jsonData.books.filter(book => book.available);
+
+        
+
+        renderBooks(availableBooks, "Books");
+
+        
     
 
     } catch (error) {
         console.error("Error:", error);
         document.getElementById("books").innerHTML = `<p>Error: ${error.message}</p>`;
     };
-}
+}*/
+
+function renderBooks(bookList, sectionTitle) {
+    books.innerHTML = "";
+            if (bookList.length > 0) {
+                books.innerHTML += `<div class='row'><h3>${sectionTitle}</h3></div>`
+
+                let row
+
+                bookList.forEach((book, index) => {
+                    if (index % 3 === 0) {
+                        row = document.createElement('div')
+                        row.classList.add('row')
+                        books.appendChild(row)
+                    }
+
+                    const col = document.createElement('div')
+                    col.classList.add('col-md-4')
+
+                    const templateBook = `
+                        <div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}">
+                            <div class="container">
+                                <h4><b>${book.title}</b></h4>
+                                <p>Author: ${book.author ?? "Unknown"}</p>
+                                <p>Price: ${book.price.Int32 ?? "Unknown"}</p>
+                                <p>Edition: ${book.edition.String || "Unknown"}</p>
+                                <p>Stock: ${book.stockAmount}</p>
+                                <!--<p>Available: ${book.available ? "Yes" : "No"}</p>-->
+                                <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
+                            </div>
+                        </div>
+                    `
+
+                    col.innerHTML = templateBook
+                    row.appendChild(col)
+                })
+            } else {
+                books.innerHTML += `<div class='row'><h3>No ${sectionTitle}</h3></div>`
+            }
+        }
 
 function showBookDetails(book) {
     console.log("Showing book details for:", book.title);
@@ -278,18 +285,21 @@ function showBookDetails(book) {
     detailedBook.setAttribute("data-stock", book.stockAmount)
 
     document.getElementById("detailedBookTitle").textContent = book.title;
-    document.getElementById("detailedBookDescription").textContent = book.description || "No description";
+    document.getElementById("detailedBookAuthor").textContent = book.author;
+    document.getElementById("detailedBookDescription").textContent = book.description.String || "No description";
     document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
-    document.getElementById("detailedBookEdition").textContent = book.edition || "No edition";
+    document.getElementById("detailedBookEdition").textContent = book.edition.String || "No edition";
     document.getElementById("detailedBookStock").textContent = book.stockAmount;
-    document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
+    //document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
     document.getElementById("detailedBookISBN").textContent = book.isbn.Int32 ?? "Unknown ISBN";
 
     detailedBook.style.display = "block";
 
+    /*
     document.getElementById("editBookButton").addEventListener('click', function() {
         editBook(book);
     });
+    */
 }
 
 function closeDetails() {
@@ -345,7 +355,9 @@ console.log(searchParams)
             })
             .then(response => response.json()) // Parse JSON response
             .then(booklist => {
-                
+                globalJsonData=booklist
+               renderBooks(booklist,"Search results")
+                /*
                 const books = document.getElementById("books");
         books.innerHTML = ""; 
         if (booklist!=null && booklist.length > 0) {       
@@ -356,9 +368,9 @@ console.log(searchParams)
 
             const templateBook = `<div id="book"><div class="card" id="showCard"><div class="container"><h4><b>${book.title}</b></h4><p>Author: ${book.author ?? "Unknown"}</p><p>Price: ${book.price.Int32 ?? "Unknown"}</p><p>Edition: ${book.edition.String || "Unknown"}</p><p>Stock: ${book.stockAmount}</p><p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p></div></div></div>`;
             books.innerHTML += templateBook;
-        });
+        }); 
 
-            }
+            }*/
         })
             /*
             response.json()) // Parse JSON response
@@ -371,22 +383,7 @@ console.log(searchParams)
         }
 
 
-//var books = [
-//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-//    { "Title": "abc", "Description": "abc", "Author": "abc abc", "Year": "2025", "BookID": "123", "Price": "123", "Rating": "123", "Edition": "123", "Cathegory": "abc", "Stock": "123"},
-//];
 
-/*
-$.each(books, function (i) {
-    if (i % 4 === 0) {
-        $('#books').append('<div class="row"></div>'); 
-
-})
-*/
 
 </script>
 

@@ -24,11 +24,11 @@ type Seller struct {
 }
 
 type Book struct {
-	BookID      int32          `json:"bookId"`
-	Title       string         `json:"title"`
-	SellerID    int32          `json:"sellerId"`
+	BookID   int32  `json:"bookId"`
+	Title    string `json:"title"`
+	SellerID int32  `json:"sellerId"`
 
-	Author      string         `json:"author"`
+	Author string `json:"author"`
 
 	Edition     sql.NullString `json:"edition"`
 	Description sql.NullString `json:"description"`
@@ -333,12 +333,10 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 }
 */
 
-
 func removeBook(available bool, bookId int32) error {
 	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
 	return nil
 }
-
 
 func SearchBooksByTitle(titlesearch string, onlyAvailable bool) ([]Book, error) {
 
@@ -413,10 +411,11 @@ func extractBooksFromSQLresult(rows *sql.Rows) ([]Book, error) {
 	return books, nil
 }
 
-func ViewSellerBooks(sellerID int32) ([]Book, error) {
+func GetSellerBooks(sellerID int32) ([]Book, error) {
+	//Changed the name: this function doesn't view the books, it just returns a list of books, so the name ViewSellerBooks was misleading.
 	var books []Book
 
-	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books WHERE SellerID = ?", sellerID)
+	rows, err := db.Query("SELECT Id, Title, Author, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books WHERE SellerID = ?", sellerID)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +423,7 @@ func ViewSellerBooks(sellerID int32) ([]Book, error) {
 
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
+		err := rows.Scan(&book.BookID, &book.Title, &book.Author, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
 		if err != nil {
 			return nil, err
 		}
@@ -434,6 +433,8 @@ func ViewSellerBooks(sellerID int32) ([]Book, error) {
 	return books, nil
 }
 
+/*
+//I think this isn't used anymore?
 func viewBooks() ([]Book, error) {
 
 	var books []Book
@@ -455,6 +456,7 @@ func viewBooks() ([]Book, error) {
 
 	return books, nil
 }
+*/
 
 func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)

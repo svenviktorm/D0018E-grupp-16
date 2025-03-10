@@ -380,7 +380,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	books, err := ViewSellerBooks(user.UserID)
+	books, err := GetSellerBooks(user.UserID)
 	if err != nil {
 		fmt.Println("Failed to get books: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -391,12 +391,14 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, book := range books {
 		fmt.Println("Price: ", book.Price)
+		fmt.Println("Author: ", book.Author)
 		if !book.Price.Valid {
 			book.Price = sql.NullInt32{0, true}
 		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
 			"bookId":      book.BookID,
 			"title":       book.Title,
+			"author":      book.Author,
 			"sellerid":    book.SellerID,
 			"description": book.Description.String,
 			"price":       book.Price,
@@ -755,6 +757,8 @@ func removeBookHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+/*
+//I think this isn't used anymore
 func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
 	books, err := viewBooks()
 	if err != nil {
@@ -772,6 +776,7 @@ func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
 		formattedBooks = append(formattedBooks, map[string]interface{}{
 			"bookId":      book.BookID,
 			"title":       book.Title,
+			"author":      book.Author,
 			"sellerid":    book.SellerID,
 			"description": book.Description.String,
 			"price":       book.Price,
@@ -794,7 +799,7 @@ func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-
+*/
 // *** Variables ***
 var db *sql.DB
 
@@ -804,7 +809,7 @@ func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:                 "root",
-		Passwd:               "AnkaAnka", //"AnkaAnka",
+		Passwd:               "SnusmumrikenVolvo8041", //"AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",
@@ -832,7 +837,7 @@ func main() {
 	http.HandleFunc("/changeToSeller", changeToSellerHandler)
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
-	http.HandleFunc("/viewBooks", viewBooksHandler)
+	//http.HandleFunc("/viewBooks", viewBooksHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)

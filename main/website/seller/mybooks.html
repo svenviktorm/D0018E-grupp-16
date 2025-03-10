@@ -65,6 +65,7 @@
 
 <div id="detailedCard" class="detailed-card" style="display:none;">
     <h3 id="detailedBookTitle"></h3>
+    <p><b>Author:</b> <span id="detailedBookAuthor"></span></p>
     <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
     <p><b>Price:</b> <span id="detailedBookPrice"></span></p>
     <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
@@ -269,10 +270,11 @@ async function viewBooks() {
                         <div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}">
                             <div class="container">
                                 <h4><b>${book.title}</b></h4>
+                                <p>Author: ${book.author ?? "Unknown"}</p>
                                 <p>Price: ${book.price.Int32 ?? "Unknown"}</p>
                                 <p>Edition: ${book.edition || "Unknown"}</p>
                                 <p>Stock: ${book.stockAmount}</p>
-                                <p>Available: ${book.available ? "Yes" : "No"}</p>
+                                <!--<p>Available: ${book.available ? "Yes" : "No"}</p>-->
                                 <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
                             </div>
                         </div>
@@ -339,7 +341,9 @@ function showBookDetails(book) {
 
     detailedBook.setAttribute("data-bookid", book.bookId)
 
+
     document.getElementById("detailedBookTitle").textContent = book.title;
+    document.getElementById("detailedBookAuthor").textContent = book.author;
     document.getElementById("detailedBookDescription").textContent = book.description || "No description";
     document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
     document.getElementById("detailedBookEdition").textContent = book.edition || "No edition";
