@@ -10,14 +10,20 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 )
 
+var loginpageURL string = "../start/login.html"
+var startpageURL string = "../start.html"
+
+// **** TYPE DEFINITIONS ****
 type RequestData struct {
 	Text string `json:"text"`
 }
@@ -37,13 +43,54 @@ func (p *Page) save() error {
 	return os.WriteFile(filename, p.Body, 0600)
 }
 
+/*
+type Album struct {
+	ID     int64
+	Title  string
+	Artist string
+	Price  float32
+}
+*/
+
+//****** HTTP HANDLERS ******
+
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewHandler called")
 	requestPath := r.URL.Path
 	fmt.Println(requestPath)
+	fmt.Println(r.Header)
 	if requestPath == "/" {
 		http.ServeFile(w, r, "website/start.html")
 	} else {
+		if strings.HasPrefix(requestPath, "/seller/") {
+			fmt.Println("Seller only page, checking credentials")
+			IDcookie, err := r.Cookie("UserID")
+			fmt.Println(err, IDcookie)
+			if err != nil || IDcookie.Value == "0" {
+				fmt.Println("not a seller")
+				http.Redirect(w, r, loginpageURL, http.StatusSeeOther)
+				return
+			} else {
+				isSellerCookie, err := r.Cookie("IsSeller")
+				if err != nil || isSellerCookie.Value != "true" {
+					http.Error(w, "To access this page you must be registered as a seller", http.StatusForbidden)
+					return
+				}
+			}
+		} else if strings.HasPrefix(requestPath, "/admin/") {
+			IDcookie, err := r.Cookie("UserID")
+			if err != nil || IDcookie.Value == "0" {
+				http.Redirect(w, r, loginpageURL, http.StatusSeeOther)
+				return
+			} else {
+				isAdminCookie, err := r.Cookie("IsAdmin")
+				if err != nil || isAdminCookie.Value != "true" {
+					http.Error(w, "To access this page you must have administrator rights", http.StatusForbidden)
+					return
+				}
+			}
+		}
+
 		requestPath = requestPath[1:]
 		requestPath = "website/" + requestPath
 		http.ServeFile(w, r, requestPath)
@@ -61,14 +108,10 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		fmt.Println("Get request to users API")
 		fmt.Println("This should be an attempt to login or similar")
-		//fmt.Println(r)
-		//r.ParseForm()
-		//fmt.Println(r.Form)
 		uname := r.FormValue("username")
 		pwd := r.FormValue("password")
 		fmt.Printf("username:%v, password:%v, hash:%v", uname, pwd, hash(pwd))
 		fmt.Println("")
-		//fmt.Println(r.Form)
 
 		user, loginOK, err := LogInCheckNotHashed(uname, pwd)
 		user.Password = pwd
@@ -94,12 +137,15 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		pwd := r.FormValue("password")
 		email := r.FormValue("email")
+		seller := r.FormValue("seller") == "seller"
+
 		fmt.Println("username:%v, password:%v, mail:%v", username, pwd, email)
 		emailSQL := sql.NullString{String: email, Valid: true}
 		if email == "" {
 			emailSQL = sql.NullString{String: "", Valid: false}
 		}
-		id, err := AddUser(username, pwd, emailSQL)
+
+		id, err := AddUser(username, pwd, emailSQL, seller)
 		if err != nil {
 			fmt.Println("Failed to add user: ", err)
 			http.Error(w, "Failed to add user: ", http.StatusNotFound)
@@ -126,50 +172,134 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func sendHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("sendHandler called")
-	if r.Method != http.MethodPost {
+func sessionHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		fmt.Println("Invalid request method ", r.Method)
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
-
-	var requestData RequestData
-	err := json.NewDecoder(r.Body).Decode(&requestData)
-	if err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
+	fmt.Println("logout request")
+	IDcookie := http.Cookie{
+		Name:   "UserID",
+		Value:  "0", //A dummy value to overwrite the old just in case removal doesn't work for some reason (which it doesn't seemt to do)
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work,
+		// instead it just sets it to session? Setting it to 1 seem to make it disappear after a second has passed.
+		// (in either case the dummy values work to ensure that the user credentials can't be used anymore)
+		//HttpOnly: true,
 	}
-
-	// Process the input text (modify response as needed)
-	responseText := fmt.Sprintf("You sent: %s", requestData.Text)
-	fmt.Println(responseText)
-	// Create response
-	books, err := SearchBooksByTitleV1(requestData.Text)
-	//fmt.Println(resp)
-	var res string
-	if err != nil {
-		res = fmt.Sprintf("Error: %v\n", err)
-	} else {
-		res = fmt.Sprintf("Hits when searching for %v: %v\n", requestData.Text, books)
+	http.SetCookie(w, &IDcookie)
+	namecookie := http.Cookie{
+		Name:   "Username",
+		Value:  "", //A dummy value to overwrite the old just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
 	}
-
-	// Create response
-	response := ResponseData{Response: res}
-
-	// Send JSON response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	http.SetCookie(w, &namecookie)
+	pwdcookie := http.Cookie{
+		Name:   "Password",
+		Value:  "", //A dummy value to overwrite the old just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &pwdcookie)
+	sellercookie := http.Cookie{
+		Name:   "IsSeller",
+		Value:  "false", //just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &sellercookie)
+	admincookie := http.Cookie{
+		Name:   "IsAdmin",
+		Value:  "false", //just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &admincookie)
+	http.Redirect(w, r, startpageURL, http.StatusSeeOther)
 }
 
-var db *sql.DB
+/*
+	func sendHandler(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("sendHandler called")
+		if r.Method != http.MethodPost {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			return
+		}
 
-type Album struct {
-	ID     int64
-	Title  string
-	Artist string
-	Price  float32
+		var requestData RequestData
+		err := json.NewDecoder(r.Body).Decode(&requestData)
+		if err != nil {
+			http.Error(w, "error decoding JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Process the input text (modify response as needed)
+		responseText := fmt.Sprintf("You sent: %s", requestData.Text)
+		fmt.Println(responseText)
+		// Create response
+		books, err := SearchBooksByTitleV1(requestData.Text)
+		//fmt.Println(resp)
+		var res string
+		if err != nil {
+			res = fmt.Sprintf("Error: %v\n", err)
+		} else {
+			res = fmt.Sprintf("Hits when searching for %v: %v\n", requestData.Text, books)
+		}
+
+		// Create response
+		response := ResponseData{Response: res}
+
+		// Send JSON response
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
+*/
+func bookHandler(w http.ResponseWriter, r *http.Request) {
+	var books []Book
+	var error error
+	switch r.Method {
+	case http.MethodGet:
+		fmt.Println("Book search API called")
+		fmt.Println(r)
+		searchtype := r.FormValue("type")
+		searchstring := r.FormValue("search")
+		switch searchtype {
+		case "Title":
+			books, error = SearchBooksByTitle(searchstring, true)
+
+		case "Author":
+			books, error = SearchBooksByAuthor(searchstring, true)
+		case "ISBN":
+			isbn, err := strconv.Atoi(searchstring)
+			if err != nil {
+				fmt.Println("Something went wrong when converting ISBN to int")
+				//TODO actuall error handling
+			}
+			books, error = SearchBooksByISBN(isbn, true)
+
+		default:
+			fmt.Println("Unimplemented search type")
+		}
+		if error != nil {
+			fmt.Printf("some error: %v", error)
+		}
+		fmt.Println(books)
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(books)
+		if err != nil {
+			fmt.Println("Failed to encode response: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	default:
+		fmt.Println("Unsupportet request type to users API")
+	}
 }
-
 func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("addBookHandler called")
 	if r.Method != http.MethodPost {
@@ -180,11 +310,31 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	var book Book
 	fmt.Println("boddy: ", r.Body)
-	err := json.NewDecoder(r.Body).Decode(&book)
-	fmt.Println("Book: ", book)
-	for a, c := range r.Cookies() {
-		fmt.Println(c, " | ", a)
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		fmt.Println("Error reading body:", err)
+		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		return
 	}
+	fmt.Println("Raw request body:", string(bodyBytes))
+
+	err = json.Unmarshal([]byte(bodyBytes), &book)
+	if err != nil {
+		fmt.Println("error decoding json")
+		return
+	}
+
+	// get the userID cookie
+	IDcookie, err := r.Cookie("UserID")
+
+	// convert cookie to integee
+	var sellerId string = IDcookie.Value
+
+	SellerIDint, err := strconv.Atoi(sellerId)
+	fmt.Println(SellerIDint)
+	book.SellerID = int32(SellerIDint)
+	fmt.Println("Book: ", book.SellerID)
 
 	if err != nil {
 		fmt.Println("Failed to get cookie: ", err)
@@ -198,8 +348,9 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//json.Unmarshal([]byte(r), &book)
-
+	fmt.Println(book)
 	id, err := AddBook(book)
+
 	if err != nil {
 		fmt.Println("Failed to add book: ", err)
 		http.Error(w, "Failed to add book: "+err.Error(), http.StatusInternalServerError)
@@ -220,14 +371,16 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewBooksBySellerHandler called")
 	//sellerId := r.Header.Get("sellerid")
+
 	user, err := getUserFromCookies(r)
+
 	if err != nil {
 		fmt.Println("Failed to get user: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	books, err := ViewSellerBooks(user.UserID)
+	books, err := GetSellerBooks(user.UserID)
 	if err != nil {
 		fmt.Println("Failed to get books: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -238,17 +391,21 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 
 	for _, book := range books {
 		fmt.Println("Price: ", book.Price)
+		fmt.Println("Author: ", book.Author)
 		if !book.Price.Valid {
 			book.Price = sql.NullInt32{0, true}
 		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
+			"bookId":      book.BookID,
 			"title":       book.Title,
+			"author":      book.Author,
 			"sellerid":    book.SellerID,
 			"description": book.Description.String,
 			"price":       book.Price,
 			"edition":     book.Edition.String,
 			"stockAmount": book.StockAmount,
-			"status":      book.Available,
+			"available":   book.Available,
+			"isbn":        book.ISBN,
 		})
 	}
 
@@ -288,7 +445,6 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 		var formattedBooks []map[string]interface{}
 		i := 0
 		for _, book := range books {
-			fmt.Println("Price: ", book.Price)
 			if !book.Price.Valid {
 				book.Price = sql.NullInt32{Int32: 0, Valid: true}
 			}
@@ -301,6 +457,7 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 				"stockAmount": book.StockAmount,
 				"status":      book.Available,
 				"count":       ids[i],
+				"bookid":      book.BookID,
 			})
 			i++
 		}
@@ -359,6 +516,7 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		deleatAll := r.FormValue("deleateAll")
+		fmt.Println("delete all", deleatAll)
 		if deleatAll == "True" {
 			err = ResetShoppingCart(user)
 			fmt.Println("Removed all book from cart")
@@ -414,11 +572,244 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("changeEmailHandler called")
+	switch r.Method {
+
+	case http.MethodPost:
+		email := r.FormValue("changeEmail")
+
+		fmt.Println("email:", email)
+		emailSQL := sql.NullString{email, true}
+		if email == "" {
+			emailSQL = sql.NullString{"", false}
+		}
+		IDcookie, err := r.Cookie("UserID")
+		if err != nil {
+			fmt.Println("error getting userID from cookie")
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+			return
+		}
+
+		userID, err := strconv.Atoi(IDcookie.Value)
+		if err != nil {
+			fmt.Println("error converting userID to int")
+			http.Error(w, "Invalid UserID", http.StatusBadRequest)
+			return
+		}
+
+		updatedEmail, err := changeEmail(emailSQL, int32(userID))
+		if err != nil {
+			fmt.Println("error updating email:", err)
+			return
+		}
+		fmt.Println(updatedEmail)
+
+	default:
+		fmt.Println("Unsupportet request type to users API")
+	}
+}
+
+func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("changeToSellerHandler called")
+
+	cookies := r.Cookies()
+	fmt.Println("All cookies:")
+	for _, cookie := range cookies {
+		fmt.Printf("Cookie Name: %s, Cookie Value: %s\n", cookie.Name, cookie.Value)
+	}
+
+	switch r.Method {
+
+	case http.MethodPost:
+
+		IDcookie, err := r.Cookie("UserID")
+		if err != nil {
+			fmt.Println("error getting userID from cookie")
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+			return
+		}
+		sellerId := IDcookie.Value
+		fmt.Println("sellerid", sellerId)
+		userID, err := strconv.Atoi(IDcookie.Value)
+		fmt.Println(userID)
+		if err != nil {
+			fmt.Println("error converting userID to int")
+			http.Error(w, "Invalid UserID", http.StatusBadRequest)
+			return
+		}
+
+		usernameCookie, err := r.Cookie("Username")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		passwordCookie, err := r.Cookie("Password")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		emailCookie, err := r.Cookie("Email")
+		if err != nil {
+			fmt.Print("error email not found", err)
+			return
+		}
+
+		username := usernameCookie.Value
+		password := passwordCookie.Value
+		email := sql.NullString{String: emailCookie.Value, Valid: true}
+
+		changedSeller, err := changeToSeller(int32(userID), username, password, email)
+		if err != nil {
+			fmt.Println("error changing to seller:", err)
+			return
+		}
+		fmt.Println("changed to seller: ", changedSeller)
+
+	default:
+		fmt.Println("Unsupportet request type to users API")
+	}
+}
+
+func editBookHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("editBookHandler called")
+	if r.Method != http.MethodPost {
+		fmt.Println("Invalid request method ", r.Method)
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var book Book
+	fmt.Println("body: ", r.Body)
+
+	err := json.NewDecoder(r.Body).Decode(&book)
+	if err != nil {
+		fmt.Println("error decoding json:", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Printf("Decoded Book: %+v\n", book)
+
+	IDcookie, err := r.Cookie("UserID")
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		http.Error(w, "Failed to get cookie: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// convert cookie to integer
+	sellerId := IDcookie.Value
+	SellerIDint, err := strconv.Atoi(sellerId)
+	if err != nil {
+		fmt.Println("Failed to convert cookie to integer:", err)
+		http.Error(w, "Invalid seller ID", http.StatusBadRequest)
+		return
+	}
+
+	book.SellerID = int32(SellerIDint)
+	fmt.Println("Book SellerID:", book.SellerID)
+
+	id, err := editBook(book)
+	if err != nil {
+		fmt.Println("Failed to edit book: ", err)
+		http.Error(w, "Failed to edit book: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"status":  "success",
+		"message": "Book edited successfully",
+		"id":      id,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		fmt.Println("Error encoding JSON response:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("JSON response sent:", response)
+}
+
+func removeBookHandler(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Available bool  `json:"available"`
+		BookId    int32 `json:"bookId"`
+	}
+	fmt.Println("availaible: ", data.Available, "bookid: ", data.BookId)
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		fmt.Println("Error decoding json", err)
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	err = removeBook(data.Available, data.BookId)
+	if err != nil {
+		http.Error(w, "Error updating book availability", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+/*
+//I think this isn't used anymore
+func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
+	books, err := viewBooks()
+	if err != nil {
+		fmt.Println("Failed to get books: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var formattedBooks []map[string]interface{}
+
+	for _, book := range books {
+		if !book.Price.Valid {
+			book.Price = sql.NullInt32{0, true}
+		}
+		formattedBooks = append(formattedBooks, map[string]interface{}{
+			"bookId":      book.BookID,
+			"title":       book.Title,
+			"author":      book.Author,
+			"sellerid":    book.SellerID,
+			"description": book.Description.String,
+			"price":       book.Price,
+			"edition":     book.Edition.String,
+			"stockAmount": book.StockAmount,
+			"available":   book.Available,
+			"isbn":        book.ISBN,
+		})
+	}
+
+	fmt.Printf("Books: %+v\n", formattedBooks)
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"books":  formattedBooks,
+	})
+	if err != nil {
+		fmt.Println("Failed to encode response: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+*/
+// *** Variables ***
+var db *sql.DB
+
+// **** MAIN ****
+
 func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:                 "root",
-		Passwd:               "AnkaAnka", //"AnkaAnka",
+		Passwd:               "AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",
@@ -442,14 +833,24 @@ func main() {
 	http.HandleFunc("/", viewHandler)
 	http.HandleFunc("/add_book", addBookHandler)
 	http.HandleFunc("/viewSellerBook", viewBooksBySellerHandler)
+	http.HandleFunc("/email", changeEmailHandler)
+	http.HandleFunc("/changeToSeller", changeToSellerHandler)
+	http.HandleFunc("/edit_book", editBookHandler)
+	http.HandleFunc("/remove_book", removeBookHandler)
+	//http.HandleFunc("/viewBooks", viewBooksHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)
 	fmt.Println("b!")
-	http.HandleFunc("/send", sendHandler)
-	fmt.Println("c!")
+	//http.HandleFunc("/send", sendHandler)
+	//fmt.Println("c!")
 	http.HandleFunc("/API/users", userHandler)
+
+	http.HandleFunc("/API/sessions", sessionHandler)
+
 	http.HandleFunc("/API/shoppingcart", shoppingCartHandler)
+	http.HandleFunc("/API/books", bookHandler)
+
 	log.Fatal(http.ListenAndServe(":80", nil))
 	fmt.Println("Server uppe!")
 }

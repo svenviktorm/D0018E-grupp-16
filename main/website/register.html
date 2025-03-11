@@ -18,6 +18,8 @@
         <input name="username" type="text" placeholder="username" id="register_username" maxlength="45" pattern="[A-Za-z_]{3,45}"> <br>
         <input name="password" type="password" placeholder="password" id="register_password" autocomplete="new-password" required> <br>
         <input name="email" type="email" placeholder="email" id="register_password" autocomplete="email" > <br>
+        <!--<input type="radio" id="seller" name="seller" value="seller">
+          <label for="seller">Seller</label>-->
         <input type="submit" value="register">
 
     </form>
@@ -43,14 +45,19 @@ async function sendRegister() {
     });
     console.log(response)
     if (response.ok){
+      console.log("updated register page used")
+      alert("Account successfully created, please log in")
+      location.replace("/login.html")
+      /*
         const user=await response.json()
         console.log(user)
         console.log("kalle anka")
-        document.cookie="UserID="+user.UserID;Path=/"
-        document.cookie="Username="+user.Username;Path=/"
-        document.cookie="Password="+user.Password;Path=/"
-        document.cookie="IsSeller="+user.IsSeller;Path=/"
-        document.cookie="IsAdmin="+user.IsAdmin;Path=/"
+        document.cookie="UserID="+user.UserID
+        document.cookie="Username="+user.Username
+        document.cookie="Password="+user.Password
+        document.cookie="Email="+user.Email.String
+        document.cookie="IsSeller="+user.IsSeller
+        document.cookie="IsAdmin="+user.IsAdmin
         console.log(document.cookie);
         if (user.IsSeller){
             console.log("going to seller page2")
@@ -64,6 +71,7 @@ async function sendRegister() {
             location.replace("/")
             //TODO get right outcome but with strange error messages in console, figure out if need to fix something
         }
+        */
 
     } else if (response.status==404) {
         document.getElementById("registerErrortext").innerText ="Register failed. Username taken."

@@ -25,14 +25,17 @@ type Seller struct {
 }
 
 type Book struct {
-	BookID      int32
-	Title       string         `json:"title"`
-	SellerID    int32          `json:"sellerid"`
+	BookID   int32  `json:"bookId"`
+	Title    string `json:"title"`
+	SellerID int32  `json:"sellerId"`
+
+	Author string `json:"author"`
+
 	Edition     sql.NullString `json:"edition"`
 	Description sql.NullString `json:"description"`
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
-	Available   bool           `json:"status"`      //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
-	ISBN        sql.NullInt32
+	Available   bool           `json:"available"`   //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
+	ISBN        sql.NullInt32  `json:"isbn"`
 	NumRatings  sql.NullInt32
 	SumRatings  sql.NullInt32
 	Price       sql.NullInt32 `json:"price"`
@@ -46,20 +49,37 @@ func hash(plaintext string) int64 {
 	return int64(binary.BigEndian.Uint64(hash[:8]))
 }
 
-func AddUser(username string, password string, email sql.NullString) (int32, error) {
+func AddUser(username string, password string, email sql.NullString, isSeller bool) (int32, error) {
 	fmt.Println("kalle")
 	var passwordHash int64 = hash(password)
-	result, err := db.Exec("INSERT INTO Users (username, PasswordHash, email, IsAdmin, IsSeller) VALUES (?, ?, ?, ? , ?)", username, passwordHash, email, false, false)
+	result, err := db.Exec("INSERT INTO Users (username, PasswordHash, email, IsAdmin, IsSeller) VALUES (?, ?, ?, ? , ?)", username, passwordHash, email, false, isSeller)
 	if err != nil {
 		fmt.Println("anka2")
 		return 0, fmt.Errorf("AddUser: %v", err)
 	}
+
 	id, err := result.LastInsertId()
 	if err != nil {
 		fmt.Println("anka1")
 		return 0, fmt.Errorf("AddUser: %v", err)
 	}
 	var i32 int32 = int32(id)
+
+	if isSeller == true {
+		newUser := User{
+			UserID:   i32,
+			Username: username,
+			Password: password,
+			Email:    email,
+			IsSeller: isSeller,
+			IsAdmin:  false,
+		}
+		_, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+		if err != nil {
+			fmt.Println("Error adding seller:", err)
+			return 0, fmt.Errorf("AddSeller: %v", err)
+		}
+	}
 	fmt.Println("anka")
 	return i32, nil
 }
@@ -111,7 +131,7 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 	tx, dberr := db.Begin()
 	//defer db.Close()
 	if dberr != nil {
-		return -2, fmt.Errorf("transaction erroor:", dberr)
+		return -2, fmt.Errorf("transaction error:", dberr)
 	}
 	result, err := tx.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
 	if err != nil {
@@ -157,6 +177,8 @@ func GetUserByID(userID int32) (User, error) {
 	return User{}, nil
 }
 
+/*
+//There where two functions that did this
 func GetBooksBySeller(sellerID int, includeAvailable bool) ([]Book, error) {
 
 	var books []Book
@@ -187,7 +209,8 @@ func GetBooksBySeller(sellerID int, includeAvailable bool) ([]Book, error) {
 	}
 	return books, nil
 }
-
+*/
+/*
 // creates a book from minimal information
 func AddBookMin(title string, sellerID int32) (int32, error) {
 	nullStr := sql.NullString{
@@ -202,10 +225,11 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 		Int32: 0,
 	}
 	//id of -99 should not be used
-	var book = Book{-99, title, sellerID, nullStr, nullStr, 0, false, nullInt32, zeroInt32, zeroInt32, nullInt32}
+	var book = Book{-99, title, sellerID, nullStr, nullStr, 0, true, nullInt32, zeroInt32, zeroInt32, nullInt32}
 	return AddBook(book)
 
 }
+*/
 
 // will not use the id of the book but create one
 func AddBook(book Book) (int32, error) {
@@ -223,7 +247,7 @@ func AddBook(book Book) (int32, error) {
 		return -1, fmt.Errorf("Addbook: loginsfail %v", loginerr)
 	}*/
 
-	result, err := db.Exec("INSERT INTO Books (Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
+	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
 	if err != nil {
 		return -1, fmt.Errorf("addBook: %v", err)
 	}
@@ -234,6 +258,52 @@ func AddBook(book Book) (int32, error) {
 	return int32(id), nil
 
 }
+
+func changeEmail(email sql.NullString, id int32) (sql.Result, error) {
+	result, err := db.Exec("UPDATE Users SET Email = ? WHERE Id = ?", email, id)
+	if err != nil {
+		fmt.Println("error updating email")
+		return result, err
+	}
+	return result, nil
+}
+
+func changeToSeller(id int32, username string, password string, email sql.NullString) (int32, error) {
+	db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
+	newUser := User{
+		UserID:   id,
+		Username: username,
+		Password: password,
+		Email:    email,
+		IsSeller: true,
+		IsAdmin:  false,
+	}
+	sellerid, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+	if err != nil {
+		fmt.Println("Error adding seller:", err)
+		return 0, fmt.Errorf("AddSeller: %v", err)
+	}
+	if err != nil {
+		fmt.Println("error updating email")
+		return id, err
+	}
+	return sellerid, nil
+}
+
+func editBook(book Book) (int32, error) {
+	result, err := db.Exec("UPDATE Books SET Title = ?, Description = ?, Price = ?, Edition = ?, StockAmount = ?, ISBN = ? WHERE Id = ?", book.Title, book.Description, book.Price, book.Edition, book.StockAmount, book.ISBN, book.BookID)
+	if err != nil {
+		return -1, fmt.Errorf("addBook: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return -2, fmt.Errorf("addBook: %v", err)
+	}
+
+	return int32(id), nil
+}
+
+/*
 
 func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 	var books []Book
@@ -262,37 +332,91 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 	}
 	return books, nil
 }
+*/
 
-func SearchBooksByTitleV2(titlesearch string) ([]Book, error) {
-	var books []Book
+func removeBook(available bool, bookId int32) error {
+	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
+	return nil
+}
+
+func SearchBooksByTitle(titlesearch string, onlyAvailable bool) ([]Book, error) {
+
 	var err error
 	var rows *sql.Rows
 
 	titlesearch = "%" + titlesearch + "%"
-	rows, err = db.Query("SELECT Id,Title,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Title LIKE ?", titlesearch)
+	if onlyAvailable {
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Available AND Title LIKE ?", titlesearch)
+	} else {
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Title LIKE ?", titlesearch)
+
+	}
 
 	if err != nil {
-		return nil, fmt.Errorf("searchBooksByTitlev2 %q: %v", titlesearch, err) //TODO fix format
+		return nil, fmt.Errorf("searchBooksByTitlev2 %v: %v", titlesearch, err)
 	}
+	return extractBooksFromSQLresult(rows)
+}
+
+func SearchBooksByAuthor(authorsearch string, onlyAvailable bool) ([]Book, error) {
+
+	var err error
+	var rows *sql.Rows
+
+	if onlyAvailable {
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Available AND MATCH(Author) AGAINST(?)", authorsearch)
+	} else {
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE MATCH(Author) AGAINST(?)", authorsearch)
+
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("searchBooksByAuthor %v: %v", authorsearch, err)
+	}
+
+	return extractBooksFromSQLresult(rows)
+
+}
+
+func SearchBooksByISBN(isbn int, onlyAvailable bool) ([]Book, error) {
+	var err error
+	var rows *sql.Rows
+
+	if onlyAvailable {
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Available AND ISBN=?", isbn)
+	} else {
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE ISBN=?", isbn)
+
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("searchBooksByTitlev2 %v: %v", isbn, err)
+	}
+	return extractBooksFromSQLresult(rows)
+}
+
+func extractBooksFromSQLresult(rows *sql.Rows) ([]Book, error) {
+	var books []Book
 	defer rows.Close()
 	// Loop through rows, using Scan to assign column data to struct fields.
 	for rows.Next() {
 		var b Book
-		if err := rows.Scan(&b.BookID, &b.Title, &b.Edition, &b.Description, &b.StockAmount, &b.Available, &b.ISBN, &b.NumRatings, &b.SumRatings, &b.Price); err != nil {
-			return nil, fmt.Errorf("searchBooksByTitlev2 %q: %v", titlesearch, err)
+		if err := rows.Scan(&b.BookID, &b.Title, &b.Author, &b.SellerID, &b.Edition, &b.Description, &b.StockAmount, &b.Available, &b.ISBN, &b.NumRatings, &b.SumRatings, &b.Price); err != nil {
+			return nil, fmt.Errorf("searchBooks: %v", err)
 		}
 		books = append(books, b)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("searchBooksByTitlev2 %q: %v", titlesearch, err)
+		return nil, fmt.Errorf("searchBooks: %v", err)
 	}
 	return books, nil
 }
 
-func ViewSellerBooks(sellerID int32) ([]Book, error) {
+func GetSellerBooks(sellerID int32) ([]Book, error) {
+	//Changed the name: this function doesn't view the books, it just returns a list of books, so the name ViewSellerBooks was misleading.
 	var books []Book
 
-	rows, err := db.Query("SELECT Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings FROM Books WHERE SellerID = ?", sellerID)
+	rows, err := db.Query("SELECT Id, Title, Author, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books WHERE SellerID = ?", sellerID)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +424,7 @@ func ViewSellerBooks(sellerID int32) ([]Book, error) {
 
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings)
+		err := rows.Scan(&book.BookID, &book.Title, &book.Author, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
 		if err != nil {
 			return nil, err
 		}
@@ -309,6 +433,31 @@ func ViewSellerBooks(sellerID int32) ([]Book, error) {
 
 	return books, nil
 }
+
+/*
+//I think this isn't used anymore?
+func viewBooks() ([]Book, error) {
+
+	var books []Book
+
+	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var book Book
+		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
+		if err != nil {
+			return nil, err
+		}
+		books = append(books, book)
+	}
+
+	return books, nil
+}
+*/
 
 func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
@@ -398,15 +547,19 @@ func GetShoppingChartBooks(user User) ([]Book, []int32, error) {
 			return nil, nil, fmt.Errorf("getShoppingChartBooks2: %v", err)
 		}
 		book, err := GetBookById(bookID)
+
+		fmt.Println("book databsefunc", book)
 		if err != nil {
 			return nil, nil, fmt.Errorf("getShoppingChartBooks3: %v", err)
 		}
 		books = append(books, book)
+		fmt.Println(books, "book: ", book)
 		counts = append(counts, count)
 	}
 	return books, counts, nil
 }
 
+/*
 func DisplayBooklist(books []Book) {
 	// just for testing purposes
 	var edition string
@@ -421,15 +574,16 @@ func DisplayBooklist(books []Book) {
 
 	}
 }
+*/
 
 func GetBookById(bookID int32) (Book, error) {
-	rows, err := db.Query("SELECT Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
+	rows, err := db.Query("SELECT Id, Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
 	if err != nil {
 		return Book{}, fmt.Errorf("getBookById1: %v", err)
 	}
 	var book Book
 	for rows.Next() {
-		err := rows.Scan(&book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
+		err := rows.Scan(&book.BookID, &book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
 		if err != nil {
 			return Book{}, fmt.Errorf("getBookById2: %v", err)
 		}
