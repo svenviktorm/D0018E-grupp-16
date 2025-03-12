@@ -24,11 +24,11 @@ type Seller struct {
 }
 
 type Book struct {
-	BookID      int32          `json:"bookId"`
-	Title       string         `json:"title"`
-	SellerID    int32          `json:"sellerId"`
+	BookID   int32  `json:"bookId"`
+	Title    string `json:"title"`
+	SellerID int32  `json:"sellerId"`
 
-	Author      string         `json:"author"`
+	Author string `json:"author"`
 
 	Edition     sql.NullString `json:"edition"`
 	Description sql.NullString `json:"description"`
@@ -132,7 +132,16 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 	if dberr != nil {
 		return -2, fmt.Errorf("transaction error:", dberr)
 	}
-	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
+
+	var descriptionValue interface{}
+	if description.Valid {
+		descriptionValue = description.String
+	} else {
+		descriptionValue = nil
+	}
+
+	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, descriptionValue)
+
 	if err != nil {
 		tx.Rollback()
 		fmt.Println("rollback!!!!!!")
@@ -267,7 +276,7 @@ func changeEmail(email sql.NullString, id int32) (sql.Result, error) {
 	return result, nil
 }
 
-func changeToSeller(id int32, username string, password string, email sql.NullString) (int32, error) {
+func changeToSeller(id int32, username string, password string, email sql.NullString, description string) (int32, error) {
 	db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
 	newUser := User{
 		UserID:   id,
@@ -277,7 +286,7 @@ func changeToSeller(id int32, username string, password string, email sql.NullSt
 		IsSeller: true,
 		IsAdmin:  false,
 	}
-	sellerid, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+	sellerid, err := AddSeller(newUser, username, sql.NullString{String: description, Valid: false})
 	if err != nil {
 		fmt.Println("Error adding seller:", err)
 		return 0, fmt.Errorf("AddSeller: %v", err)
@@ -333,12 +342,10 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 }
 */
 
-
 func removeBook(available bool, bookId int32) error {
 	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
 	return nil
 }
-
 
 func SearchBooksByTitle(titlesearch string, onlyAvailable bool) ([]Book, error) {
 

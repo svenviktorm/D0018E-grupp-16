@@ -621,6 +621,12 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, "Error parsing form", http.StatusBadRequest)
+			return
+		}
+
 		IDcookie, err := r.Cookie("UserID")
 		if err != nil {
 			fmt.Println("error getting userID from cookie")
@@ -658,11 +664,22 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 		username := usernameCookie.Value
 		password := passwordCookie.Value
 		email := sql.NullString{String: emailCookie.Value, Valid: true}
-
-		changedSeller, err := changeToSeller(int32(userID), username, password, email)
+		description := r.FormValue("description")
+		fmt.Println("description", description)
+		changedSeller, err := changeToSeller(int32(userID), username, password, email, description)
+		fmt.Println("changeToSeller called", description)
+		fmt.Println("körs ens denna")
 		if err != nil {
 			fmt.Println("error changing to seller:", err)
 			return
+		}
+		if err == nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{"message": "Seller status updated successfully"})
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
 		}
 		fmt.Println("changed to seller: ", changedSeller)
 
