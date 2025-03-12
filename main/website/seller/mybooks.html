@@ -25,21 +25,19 @@
 <button id="showform">Add book</button>
 
 <div class="flex-container">
-    <div id="addbook">
-        <card>
-            <div class="flex-container">
-                <form id="addBookForm">   
-                    <input name="title" type="text" placeholder="Title" id="title"><br>
-                    <input name="author" type="text" placeholder="Author" id="author"><br>
-                    <textarea name="description" placeholder="Description" id="description" rows="1" style="resize: none; overflow: hidden;"></textarea><br>
-                    <input name="price" type="number" placeholder="Price" id="price"><br>
-                    <input name="edition" type="text" placeholder="Edition" id="edition"><br>
-                    <input name="stockAmount" type="number" placeholder="Stock" id="stockAmount"><br>
-                    <input name="isbn" type="number" placeholder="ISBN" id="isbn"><br>
-                    <input type="submit" value="Submit">
-                </form>
-            </div>
-        </card>
+    <div id="addbook" style="display: none; width: 60%; margin: auto;">
+        <div class="flex-container">
+            <form id="addBookForm">   
+                <input class="inputAddBookForm" name="title" type="text" placeholder="Title" id="title"><br>
+                <input class="inputAddBookForm" name="author" type="text" placeholder="Author" id="author"><br>
+                <textarea class="inputAddBookForm" name="description" placeholder="Description" id="description" rows="1" style="resize: none; overflow: hidden;"></textarea><br>
+                <input class="inputAddBookForm" name="price" type="number" placeholder="Price" id="price"><br>
+                <input class="inputAddBookForm" name="edition" type="text" placeholder="Edition" id="edition"><br>
+                <input class="inputAddBookForm" name="stockAmount" type="number" placeholder="Stock" id="stockAmount"><br>
+                <input class="inputAddBookForm" name="isbn" type="number" placeholder="ISBN" id="isbn"><br>
+                <input class="inputAddBookForm" type="submit" value="Submit">
+            </form>
+        </div>
     </div>
 </div>
 
@@ -189,7 +187,7 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         price: {Int32: parseInt(document.getElementById("price").value, 10), Valid: true},
         edition: {String: document.getElementById("edition").value, Valid: true},
         stockAmount: parseInt(document.getElementById("stockAmount").value, 10),
-        isbn: {Int32: parseInt(document.getElementById("isbn").value, 10), Valid: true},
+        isbn: {Int64: parseInt(document.getElementById("isbn").value, 10), Valid: true},
         available: true
     };
 
@@ -204,7 +202,7 @@ document.getElementById("addBookForm").addEventListener("submit", async function
             //headers: { "Content-Type": "application/json" },
             body: JSON.stringify(Book)
         });
-
+        console.log(Book)
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`HTTP ${response.status}: ${errorText}`);
@@ -214,6 +212,7 @@ document.getElementById("addBookForm").addEventListener("submit", async function
 
         console.log("Added book", result);
         alert("Added book succesfully");
+        document.getElementById("addbook").style.display = "none";
         viewBooks();
     } catch (error) { 
         console.error("Error adding book", error);
@@ -275,7 +274,7 @@ async function viewBooks() {
                                 <p>Edition: ${book.edition || "Unknown"}</p>
                                 <p>Stock: ${book.stockAmount}</p>
                                 <!--<p>Available: ${book.available ? "Yes" : "No"}</p>-->
-                                <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
+                                <p>ISBN: ${book.isbn.Int64 ?? "Unknown"}</p>
                             </div>
                         </div>
                     `

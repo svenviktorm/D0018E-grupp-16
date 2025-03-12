@@ -124,7 +124,7 @@ function getCookie(name) {
     <h3 id="detailedBookTitle"></h3>
     <p><b>Author:</b> <span id="detailedBookAuthor"></span></p>
     <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
-    <p><b>Price:</b> <span id="detailedBookPrice"></span></p>
+    <p><b>Price:</b> <span id="detailedBookPrice"></span> kr</p>
     <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
     <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
     <!--<p><b>Available:</b> <span id="detailedBookAvailable"></span></p>-->
@@ -138,9 +138,9 @@ function getCookie(name) {
 
 </div>
 
-<div class="row">
+<!--<div class="row">
     <div id="books"></div>
-</div>
+</div>-->
 
 
 <div class="row">
@@ -259,11 +259,11 @@ function renderBooks(bookList, sectionTitle) {
                             <div class="container">
                                 <h4><b>${book.title}</b></h4>
                                 <p>Author: ${book.author ?? "Unknown"}</p>
-                                <p>Price: ${book.price.Int32 ?? "Unknown"}</p>
+                                <p>Price: ${book.price.Int32 ?? "Unknown"} kr</p>
                                 <p>Edition: ${book.edition.String || "Unknown"}</p>
                                 <p>Stock: ${book.stockAmount}</p>
                                 <!--<p>Available: ${book.available ? "Yes" : "No"}</p>-->
-                                <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
+                                <p>ISBN: ${book.isbn.Int64 ?? "Unknown"}</p>
                             </div>
                         </div>
                     `
@@ -291,7 +291,7 @@ function showBookDetails(book) {
     document.getElementById("detailedBookEdition").textContent = book.edition.String || "No edition";
     document.getElementById("detailedBookStock").textContent = book.stockAmount;
     //document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
-    document.getElementById("detailedBookISBN").textContent = book.isbn.Int32 ?? "Unknown ISBN";
+    document.getElementById("detailedBookISBN").textContent = book.isbn.Int64 ?? "Unknown ISBN";
 
     detailedBook.style.display = "block";
 
@@ -330,19 +330,13 @@ async function addToCart() {
 
         if (response.ok) {
             console.log("Book added to cart successfully!");
-            // Optionally, provide feedback to the user (e.g., a message).
         } else {
             console.error("Failed to add book to cart.");
-            // Handle errors (e.g., show an error message).
         }
     } catch (error) {
         console.error("Error adding to cart:", error);
-        // Handle network errors or other exceptions.
     }
-
 }
-
-
 
 function searchBook() {
     console.log("searchbook clicked")
@@ -353,7 +347,7 @@ console.log(searchParams)
             fetch("/API/books?"+searchParams, {
                 method: "GET",
             })
-            .then(response => response.json()) // Parse JSON response
+            .then(response => response.json())
             .then(booklist => {
                 globalJsonData=booklist
                renderBooks(booklist,"Search results")
@@ -381,10 +375,6 @@ console.log(searchParams)
                 */
             .catch(error => console.error("Error:", error));
         }
-
-
-
-
 </script>
 
 </body>
