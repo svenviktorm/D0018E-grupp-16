@@ -193,8 +193,10 @@ button {
     transform: translate(-50%, -50%);
     background: white;
     padding: 20px;
-    width: 40%;
+    width: 80%;
     max-width: 400px;
+    max-height: 500px;
+    overflow: auto;
     border-radius: 10px;
     z-index: 1000;
     text-align: center;
@@ -231,4 +233,22 @@ button {
 
 .col-md-4 {
     min-width: 200px;
+    max-width: 200px;
+    flex: 0 0 calc(33.333% - 20px);
+    margin: 10px;
+    box-sizing: border-box;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
