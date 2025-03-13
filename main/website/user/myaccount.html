@@ -89,6 +89,8 @@ document.getElementById("sellerButton").addEventListener("click", function() {
                 const user=await response.json()
                 alert("You are now a seller")
                 console.log("isSeller request")
+                form.style.display = "none";
+                form.reset()
                 
             } else {
                 console.log("error changing to seller1")
