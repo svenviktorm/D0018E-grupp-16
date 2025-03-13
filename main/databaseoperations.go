@@ -132,7 +132,16 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 	if dberr != nil {
 		return -2, fmt.Errorf("transaction error:", dberr)
 	}
-	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
+
+	var descriptionValue interface{}
+	if description.Valid {
+		descriptionValue = description.String
+	} else {
+		descriptionValue = nil
+	}
+
+	result, err := db.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, descriptionValue)
+
 	if err != nil {
 		tx.Rollback()
 		fmt.Println("rollback!!!!!!")
@@ -272,7 +281,7 @@ func changeEmail(email sql.NullString, id int32) (sql.Result, error) {
 	return result, nil
 }
 
-func changeToSeller(id int32, username string, password string, email sql.NullString) (int32, error) {
+func changeToSeller(id int32, username string, password string, email sql.NullString, description string, name string) (int32, error) {
 	db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
 	newUser := User{
 		UserID:   id,
@@ -282,7 +291,7 @@ func changeToSeller(id int32, username string, password string, email sql.NullSt
 		IsSeller: true,
 		IsAdmin:  false,
 	}
-	sellerid, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+	sellerid, err := AddSeller(newUser, name, sql.NullString{String: description, Valid: true})
 	if err != nil {
 		fmt.Println("Error adding seller:", err)
 		return 0, fmt.Errorf("AddSeller: %v", err)

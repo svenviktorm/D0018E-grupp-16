@@ -213,6 +213,7 @@ document.getElementById("addBookForm").addEventListener("submit", async function
         console.log("Added book", result);
         alert("Added book succesfully");
         document.getElementById("addbook").style.display = "none";
+        document.getElementById("addbook").textContent = "Add book";
         viewBooks();
     } catch (error) { 
         console.error("Error adding book", error);

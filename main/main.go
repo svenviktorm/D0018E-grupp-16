@@ -655,7 +655,7 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 
 		passwordCookie, err := r.Cookie("Password")
 		if err != nil {
-			fmt.Print("error email not found", err)
+			fmt.Print("error password not found", err)
 			return
 		}
 
@@ -666,12 +666,17 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		username := usernameCookie.Value
+		name := r.FormValue("name")
 		password := passwordCookie.Value
 		email := sql.NullString{String: emailCookie.Value, Valid: true}
 		description := r.FormValue("description")
-		fmt.Println("description", description)
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("description:", description)
 
-		changedSeller, err := changeToSeller(int32(userID), username, password, email)
+		changedSeller, err := changeToSeller(int32(userID), username, password, email, description, name)
 		fmt.Println("changeToSeller called", description)
 		fmt.Println("körs ens denna")
 		if err != nil {
