@@ -753,6 +753,72 @@ func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getReviewHandler(w http.ResponseWriter, r *http.Request) {
+
+	reviews, ids, err := getReviews(book)
+	if err != nil {
+		fmt.Println("Failed to get cart: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var formattedReviews []map[string]interface{}
+	i := 0
+	for _, review := range reviews {
+		if !review.Text.Valid {
+			review.Text = sql.NullString{String: "", Valid: true}
+		}
+		formattedReviews = append(formattedReviews, map[string]interface{}{
+			"id":     review.Id,
+			"bookid": review.BookID,
+			"userid": review.UserID,
+			"text":   review.Text.String,
+			"rating": review.Rating,
+		})
+		i++
+	}
+
+	fmt.Printf("Books: %+v\n", formattedReviews)
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"books":  formattedReviews,
+	})
+	if err != nil {
+		fmt.Println("Failed to encode response: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func createReviewHandler(w http.ResponseWriter, r *http.Request) {
+
+	bookID := r.FormValue("bookID")
+	text := r.FormValue("text")
+	rating := r.FormValue("rating")
+
+	bookIDint, err := strconv.Atoi(bookID)
+	if err != nil {
+		fmt.Println("Invalid bookID")
+		http.Error(w, "Invalid bookID", http.StatusBadRequest)
+		return
+	}
+
+	IDcookie, err := r.Cookie("UserID")
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		return User{}, err
+	}
+	userIDstr := IDcookie.Value
+
+	_, err = createReview(userIDstr, int32(bookIDint), text, rating)
+	if err != nil {
+		fmt.Println("Failed to add to cart: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 // *** Variables ***
 var db *sql.DB
 
@@ -791,6 +857,8 @@ func main() {
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
 	http.HandleFunc("/viewBooks", viewBooksHandler)
+	http.HandleFunc("/get_review", getReviewHandler)
+	http.HandleFunc("/create_review", createReviewHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)

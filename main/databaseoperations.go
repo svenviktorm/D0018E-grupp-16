@@ -32,9 +32,17 @@ type Book struct {
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
 	Available   bool           `json:"available"`   //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
 	ISBN        sql.NullInt32  `json:"isbn"`
-	NumRatings  sql.NullInt32
-	SumRatings  sql.NullInt32
-	Price       sql.NullInt32 `json:"price"`
+	NumRatings  sql.NullInt32  `json:"numratings"`
+	SumRatings  sql.NullInt32  `json:"sumratings"`
+	Price       sql.NullInt32  `json:"price"`
+}
+
+type BookReview struct {
+	Id     int32          `json:"id"`
+	BookID int32          `json:"book_id"`
+	UserID int32          `json:"user_id"`
+	Text   sql.NullString `json:"text"`
+	Rating int            `json:"rating"`
 }
 
 func hash(plaintext string) int64 {
@@ -397,6 +405,38 @@ func viewBooks() ([]Book, error) {
 	return books, nil
 }
 
+func createReview(userId int32, bookId int32, text string, rating int) error {
+	_, err := db.Exec("INSERT INTO BookReviews (BookID, UserID, Text, Rating) VALUES (?, ?, ?, ?)", bookId, userId, text, rating)
+	if err != nil {
+		return fmt.Errorf("failed to create review: %v", err)
+	}
+	return nil
+}
+
+func getReview(bookId int) ([]BookReview, error) {
+	rows, err := db.Query("SELECT Id, BookID, UserID, Text, Rating FROM BookReviews WHERE BookID = ?", bookId)
+	if err != nil {
+		return nil, fmt.Errorf("getReview1: %v", err)
+	}
+	var reviews []BookReview
+	for rows.Next() {
+		var bookID int32
+		var userID int32
+		err := rows.Scan(&bookID, &userID)
+		if err != nil {
+			return nil, fmt.Errorf("getReviews2: %v", err)
+		}
+		review, err := GetBookReviewById(bookID)
+		if err != nil {
+			return nil, fmt.Errorf("getReviews3: %v", err)
+		}
+		reviews = append(reviews, review)
+		fmt.Println(review, "book: ", review)
+	}
+
+	return reviews, nil
+}
+
 func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
 	if err != nil || !successLogin {
@@ -525,4 +565,19 @@ func GetBookById(bookID int32) (Book, error) {
 		}
 	}
 	return book, nil
+}
+
+func GetBookReviewById(bookID int32) (BookReview, error) {
+	rows, err := db.Query("SELECT Id, BookID, UserID, Text, Rating FROM BookReviews WHERE BookID = ?", bookID)
+	if err != nil {
+		return BookReview{}, fmt.Errorf("getBookById1: %v", err)
+	}
+	var bookReview BookReview
+	for rows.Next() {
+		err := rows.Scan(&bookReview.Id, &bookReview.BookID, &bookReview.UserID, &bookReview.Text, &bookReview.Rating)
+		if err != nil {
+			return BookReview{}, fmt.Errorf("getBookById2: %v", err)
+		}
+	}
+	return bookReview, nil
 }

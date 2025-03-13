@@ -2,6 +2,7 @@
     DROP TABLE IF EXISTS Sellers;
     DROP TABLE IF EXISTS Users;
     DROP TABLE IF EXISTS InShoppingCart;
+    DROP TABLE IF EXISTS BookReviews;
 
     CREATE TABLE Users(
         Id INT NOT NULL AUTO_INCREMENT,
@@ -46,4 +47,15 @@ CREATE TABLE InShoppingCart(
     PRIMARY KEY (UserID,BookID),
     FOREIGN KEY (UserID) REFERENCES Users(Id),
     FOREIGN KEY (BookID) REFERENCES Books(Id)
+);
+
+CREATE TABLE BookReviews(
+    Id INT NOT NULL AUTO_INCREMENT,
+    BookID INT NOT NULL,
+    UserID INT NOT NULL,
+    Text VARCHAR(2500),
+    Rating TINYINT DEFAULT 0 CHECK (Rating >= 0),
+    PRIMARY KEY (Id),
+    FOREIGN KEY (BookID) REFERENCES Books(Id),
+    FOREIGN KEY (UserID) REFERENCES Users(Id)
 );

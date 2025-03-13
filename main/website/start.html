@@ -122,6 +122,16 @@ function getCookie(name) {
     <input type="number" name="count" id="count">
     <button onclick="closeDetails()">Close</button>
     
+    <div id="reviewSection" style="display: none;">
+        <h4>Leave a Review</h4>
+        <form id="reviewForm">
+            <label for="reviewText">Review:</label><br>
+            <textarea id="reviewText" name="text" rows="4" cols="50"></textarea><br><br>
+            <label for="reviewRating">Rating (1-5):</label>
+            <input type="number" id="reviewRating" name="rating" min="1" max="5"><br><br>
+            <button type="button" onclick="submitReview()">Submit Review</button>
+        </form>
+    </div>
 </div>
 
 </div>
@@ -264,6 +274,8 @@ function showBookDetails(book) {
 
     detailedBook.style.display = "block";
 
+    document.getElementById("reviewSection").style.display = "block"
+
     document.getElementById("editBookButton").addEventListener('click', function() {
         editBook(book);
     });
@@ -297,14 +309,43 @@ async function addToCart() {
 
         if (response.ok) {
             console.log("Book added to cart successfully!");
-            // Optionally, provide feedback to the user (e.g., a message).
         } else {
             console.error("Failed to add book to cart.");
-            // Handle errors (e.g., show an error message).
         }
     } catch (error) {
         console.error("Error adding to cart:", error);
-        // Handle network errors or other exceptions.
+    }
+}
+
+async function submitReview() {
+    let bookId = document.getElementById("detailedCard").getAttribute("data-bookid");
+    let reviewText = document.getElementById("reviewText").value;
+    let reviewRating = document.getElementById("reviewRating").value;
+
+    try {
+        const formData = new URLSearchParams();
+        formData.append("bookID", bookId);
+        formData.append("text", reviewText);
+        formData.append("rating", reviewRating);
+
+        const response = await fetch("/create_review", {
+            method: "POST",
+            body: formData,
+        });
+
+        if (response.ok) {
+            console.log("Review submitted successfully!");
+            alert("Review submitted successfully!");
+
+            document.getElementById("reviewText").value = "";
+            document.getElementById("reviewRating").value = "";
+        } else {
+            console.error("failed to submit review.");
+            alert("failed to submit review. Please try again.");
+        }
+    } catch (error) {
+        console.error("Error submitting review:", error);
+        alert("an error occurred while submitting the review.");
     }
 }
 
