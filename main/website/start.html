@@ -21,18 +21,18 @@
 <div class="topnav">
     <a  class="active" href="/start.html">Book Store</a>
     <a  id="myaccountlink" href="/user/myaccount.html">My Account</a>
-    <a  href="../shoppingcart.html">Shopping Cart</a>
+    <a id="shoppingcartlink" href="../shoppingcart.html">Shopping Cart</a>
     <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
     <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
     <a id="loginoutbutton" href="javascript:void(0);"
            onclick="logInOut()">Log In/Create account</a>
-</div>
-<script>
-IDcookie=getCookie("UserID")
-console.log(IDcookie)
-document.getElementById("sellerpageslink").style.display="none"
-document.getElementById("adminpageslink").style.display="none"
-if (IDcookie!=null && IDcookie!=0){
+  </div>
+  <script>
+  IDcookie=getCookie("UserID")
+  console.log(IDcookie)
+  document.getElementById("sellerpageslink").style.display="none"
+  document.getElementById("adminpageslink").style.display="none"
+  if (IDcookie!=null && IDcookie!=0){
     console.log("logged in")
     document.getElementById("loginoutbutton").innerHTML='Log Out'
     sellercookie=getCookie("IsSeller")
@@ -43,19 +43,19 @@ if (IDcookie!=null && IDcookie!=0){
     if(admincookie=="true"){
         document.getElementById("adminpageslink").style.display="block"
     }
-}else{
+  }else{
     document.getElementById("myaccountlink").style.display="none"
-}
-
-
-async function logInOut(){
+    
+    document.getElementById("shoppingcartlink").style.display="none"
+  }
+  
+  
+  async function logInOut(){
     IDcookie=getCookie("UserID")
-
+  
     if (IDcookie==null || IDcookie==0){ // not logged in, go to login page
-
         location.href="/login.html"
-
-
+  
     }else{//logged in, logging out
     try {
     const response = await fetch("/API/sessions", {
@@ -71,9 +71,9 @@ async function logInOut(){
   } catch (e) {
     console.error(e);
   }
-}
-}
-function getCookie(name) {
+  }
+  }
+  function getCookie(name) {
     const cookieString = document.cookie;
     if (cookieString) {
         const cookies = cookieString.split(';');
@@ -85,8 +85,8 @@ function getCookie(name) {
         }
     }
     return null;
-}
-</script>
+  }
+  </script>
 
 
 <div class="flex-container">

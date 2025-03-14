@@ -123,8 +123,8 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(user)
 		} else {
 			if err != nil {
-				//http.Error(w, fmt.Printf("Some error occured: %v", err), http.StatusInternalServerError)
-				http.Error(w, "Some error occured", http.StatusInternalServerError)
+				http.Error(w, fmt.Sprint("Some error occured: %v", err), http.StatusInternalServerError)
+				//http.Error(w, "Some error occured", http.StatusInternalServerError)
 				//TODO fix this
 			} else {
 				http.Error(w, "Invalid username or password", http.StatusNotFound)
@@ -137,15 +137,15 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		pwd := r.FormValue("password")
 		email := r.FormValue("email")
-		seller := r.FormValue("seller") == "seller"
+		//seller := r.FormValue("seller") == "seller"
 
-		fmt.Println("username:%v, password:%v, mail:%v", username, pwd, email)
+		fmt.Printf("username:%v, password:%v, mail:%v", username, pwd, email)
 		emailSQL := sql.NullString{String: email, Valid: true}
 		if email == "" {
 			emailSQL = sql.NullString{String: "", Valid: false}
 		}
 
-		id, err := AddUser(username, pwd, emailSQL, seller)
+		id, err := AddUser(username, pwd, emailSQL)
 		if err != nil {
 			fmt.Println("Failed to add user: ", err)
 			http.Error(w, "Failed to add user: ", http.StatusNotFound)
@@ -159,7 +159,8 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Failed to create user")
 			http.Error(w, "Failed to Create user", http.StatusNotFound)
 		}
-		fmt.Println("User added with id: %v", id)
+		fmt.Printf("User added with id: %v", id)
+		//TODO if seller then call upgradeToSeller?
 
 	case http.MethodDelete:
 		fmt.Println("Delete request to users API")
@@ -221,6 +222,14 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		//HttpOnly: true,
 	}
 	http.SetCookie(w, &admincookie)
+	endtimecookie := http.Cookie{
+		Name:   "SessionEnd",
+		Value:  "0", //just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &endtimecookie)
 	http.Redirect(w, r, startpageURL, http.StatusSeeOther)
 }
 
@@ -610,14 +619,16 @@ func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("changeToSellerHandler called")
+func sellerHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("sellerHandler called")
 
-	cookies := r.Cookies()
-	fmt.Println("All cookies:")
-	for _, cookie := range cookies {
-		fmt.Printf("Cookie Name: %s, Cookie Value: %s\n", cookie.Name, cookie.Value)
-	}
+	/*
+		cookies := r.Cookies()
+		fmt.Println("All cookies:")
+		for _, cookie := range cookies {
+			fmt.Printf("Cookie Name: %s, Cookie Value: %s\n", cookie.Name, cookie.Value)
+		}
+	*/
 
 	switch r.Method {
 
@@ -629,47 +640,147 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "User not authenticated", http.StatusUnauthorized)
 			return
 		}
-		sellerId := IDcookie.Value
-		fmt.Println("sellerid", sellerId)
-		userID, err := strconv.Atoi(IDcookie.Value)
-		fmt.Println(userID)
+		/*
+			sellerId := IDcookie.Value
+			fmt.Println("sellerid", sellerId)
+		*/
+		authUserID, err := strconv.Atoi(IDcookie.Value)
+		fmt.Println(authUserID)
 		if err != nil {
 			fmt.Println("error converting userID to int")
 			http.Error(w, "Invalid UserID", http.StatusBadRequest)
 			return
 		}
 
-		usernameCookie, err := r.Cookie("Username")
+		/*
+			passwordCookie, err := r.Cookie("Password")
+			if err != nil {
+				fmt.Print("error password not found", err)
+				http.Error(w, "User not authenticated", http.StatusUnauthorized)
+				return
+			}
+			password := passwordCookie.Value
+		*/
+
+		//sellerName := r.FormValue("name")
+		//description := r.FormValue("description")
+		/*
+			toBeSellerIDs := r.FormValue("SellerID")
+			if toBeSellerIDs == "" {
+				fmt.Println("Seller ID missing from request form")
+				http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
+				return
+			}
+			toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
+			if err != nil {
+				fmt.Println("Invalid userID")
+				http.Error(w, "Invalid SellerID", http.StatusBadRequest)
+				return
+			}
+		*/
+		/*
+			changedSeller, err := UpgradeToSeller(int32(toBeSellerIDint), int32(authUserID), password, sellerName, sql.NullString{description, true})
+			if err != nil {
+				fmt.Println("error changing to seller:", err)
+				switch changedSeller {
+				case -1:
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+				case -2:
+					http.Error(w, err.Error(), http.StatusForbidden)
+				case -4:
+					http.Error(w, err.Error(), http.StatusBadRequest)
+				default:
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+				return
+			}
+			fmt.Println("changed to seller: ", changedSeller)
+		*/
+		/*
+			if authUserID == toBeSellerIDint {
+				sellerCookie, err := r.Cookie("IsSeller")
+				fmt.Println(sellerCookie.Domain)
+				fmt.Println(sellerCookie.MaxAge)
+				fmt.Println(sellerCookie.Path)
+				fmt.Println(sellerCookie.Value)
+				fmt.Println(sellerCookie.Name)
+				if err == nil {
+					sellerCookie.Value = "true"
+					http.SetCookie(w, sellerCookie)
+				}
+			}
+		*/
+
+		w.WriteHeader(http.StatusOK)
+	case http.MethodGet:
+		//TODO get seller info
+	case http.MethodPut:
+		//TODO update seller info
+		IDcookie, err := r.Cookie("UserID")
 		if err != nil {
-			fmt.Print("error email not found", err)
+			fmt.Println("error getting userID from cookie")
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+			return
+		}
+
+		authUserID, err := strconv.Atoi(IDcookie.Value)
+		fmt.Println(authUserID)
+		if err != nil {
+			fmt.Println("error converting userID to int")
+			http.Error(w, "Invalid UserID", http.StatusBadRequest)
 			return
 		}
 
 		passwordCookie, err := r.Cookie("Password")
 		if err != nil {
-			fmt.Print("error email not found", err)
+			fmt.Print("error password not found", err)
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
 			return
 		}
-
-		emailCookie, err := r.Cookie("Email")
-		if err != nil {
-			fmt.Print("error email not found", err)
-			return
-		}
-
-		username := usernameCookie.Value
 		password := passwordCookie.Value
-		email := sql.NullString{String: emailCookie.Value, Valid: true}
 
-		changedSeller, err := changeToSeller(int32(userID), username, password, email)
-		if err != nil {
-			fmt.Println("error changing to seller:", err)
+		sellerName := r.FormValue("name")
+		description := r.FormValue("description")
+		toBeSellerIDs := r.FormValue("SellerID")
+		if toBeSellerIDs == "" {
+			fmt.Println("Seller ID missing from request form")
+			http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
 			return
 		}
-		fmt.Println("changed to seller: ", changedSeller)
+		toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
+		if err != nil {
+			fmt.Println("Invalid userID")
+			http.Error(w, "Invalid SellerID", http.StatusBadRequest)
+			return
+		}
+		err = UpdateSellerInfo(int32(toBeSellerIDint), int32(authUserID), password, sellerName, sql.NullString{description, true})
+		if err != nil {
+			fmt.Println("error updating seller info:", err)
+			myerr, ok := err.(MyError)
+			if !ok {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			} else {
+				switch myerr.errorType {
+				case errorTypeAuthorizationNotFound:
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+				case errorTypeAuthorizationUnauthorized:
+					http.Error(w, err.Error(), http.StatusForbidden)
+				case errorTypeBadRequest:
+					http.Error(w, err.Error(), http.StatusBadRequest)
+				case errorTypeDatabase:
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				case errorTypeUserNotFound:
+					http.Error(w, err.Error(), http.StatusNotFound)
+				default:
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
 
+			return
+		}
+		fmt.Println("seller info updated.")
 	default:
-		fmt.Println("Unsupportet request type to users API")
+		fmt.Println("Unsupportet request type to sellers API")
 	}
 }
 
@@ -834,7 +945,7 @@ func main() {
 	http.HandleFunc("/add_book", addBookHandler)
 	http.HandleFunc("/viewSellerBook", viewBooksBySellerHandler)
 	http.HandleFunc("/email", changeEmailHandler)
-	http.HandleFunc("/changeToSeller", changeToSellerHandler)
+	http.HandleFunc("/API/sellers", sellerHandler)
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
 	//http.HandleFunc("/viewBooks", viewBooksHandler)
@@ -855,6 +966,24 @@ func main() {
 	fmt.Println("Server uppe!")
 }
 
+func getIDFromCookies(r *http.Request) (int32, error) {
+	IDcookie, err := r.Cookie("UserID")
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		return -1, err
+	}
+	userIDstr := IDcookie.Value
+	if userIDstr == "" {
+		fmt.Println("Missing userID")
+		return -1, fmt.Errorf("Missing userID")
+	}
+	userIDint, err := strconv.Atoi(userIDstr)
+	if err != nil {
+		fmt.Println("Invalid userID")
+		return -1, fmt.Errorf("Invalid userID")
+	}
+	return int32(userIDint), nil
+}
 func getUserFromCookies(r *http.Request) (User, error) {
 	IDcookie, err := r.Cookie("UserID")
 	if err != nil {
@@ -887,7 +1016,7 @@ func getUserFromCookies(r *http.Request) (User, error) {
 		fmt.Println("Failed to get cookie: ", err)
 		return User{}, err
 	}
-	user.Username = username.Value
+	user.Username = sql.NullString{username.Value, true}
 
 	return user, nil
 }
