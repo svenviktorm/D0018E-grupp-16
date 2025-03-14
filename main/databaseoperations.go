@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+// ---------------STRUCT TYPES---------------------------
 type User struct {
 	UserID   int32
 	Username string
@@ -15,6 +16,14 @@ type User struct {
 	Email    sql.NullString
 	IsAdmin  bool
 	IsSeller bool
+}
+
+type Authorization struct {
+	//This is a 'smaller version of User' for when we only want to know if the user have the right to do something or not
+	UserID          int32
+	AuthorizationOK bool //the user credentials have been (sucessfully) checked
+	IsAdmin         bool
+	IsSeller        bool
 }
 
 type Seller struct {
@@ -39,6 +48,39 @@ type Book struct {
 	SumRatings  sql.NullInt32
 	Price       sql.NullInt32 `json:"price"`
 }
+
+type Order struct {
+	OrderID             int32
+	SellerID            int32
+	CustomerID          int32
+	TimeEntered         sql.NullTime
+	TimeConfirmed       sql.NullTime
+	TimeSent            sql.NullTime
+	TimePaymentReceived sql.NullTime
+	PaymentReceived     bool
+	PaymentMethod       string
+	Status              string
+	DeliveryAddress     string
+	BillingAddress      string
+}
+
+// enum for orderStatus
+const (
+	OrderStatusReserved  = "reserved"
+	OrderStatusConfirmed = "confirmed"
+	OrderStatusPayed     = "payed"
+	OrderStatusSent      = "sent"
+	OrderStatusCanceled  = "canceled"
+	OrderStatusReturned  = "returned"
+)
+
+// enum for paymentMethod
+const (
+	paymentMethodInvoice = "invoice"
+	paymentMethodCard    = "card"
+)
+
+//---------------USER ACCOUNTS---------------------------
 
 func hash(plaintext string) int64 {
 	h := sha3.New256()
@@ -87,6 +129,40 @@ func AddUser(username string, password string, email sql.NullString, isSeller bo
 func LogInCheckNotHashed(username string, password string) (user User, loginSucces bool, err error) {
 	var passwordHash int64 = hash(password)
 	return LoginCheck(username, passwordHash)
+}
+
+func authorizationCheck(userID int32, password string) (Authorization, error) {
+	//This does the same as LogInCheckNotHashed but with usedID instead of username, which should be faster since that's the primary key of the table
+	//(for login we need to use the username but after that when checking that the user is authorized to do something we might as well use the userID.
+	//this will be used a lot for the admin functions.)
+	//It also returns less data about the user, only that which is relevant for wheter the user have the right to do something.
+	var passwordHash int64 = hash(password)
+	var authorization Authorization = Authorization{UserID: userID}
+	rows, err := db.Query("SELECT IsAdmin, IsSeller FROM Users WHERE Id = ? AND PasswordHash = ? ", userID, passwordHash)
+	if err != nil {
+
+		return authorization, fmt.Errorf("error in authorizationCheck, query error:  %v", err)
+	}
+	defer rows.Close()
+	canReadRow := rows.Next()
+	//fmt.Println("canreadrow:", canReadRow)
+	if canReadRow {
+		err := rows.Scan(&authorization.IsAdmin, &authorization.IsSeller)
+		if err != nil {
+			err = fmt.Errorf("error in authorizationCheck, couldn't scan:  %v", err)
+		} else {
+			authorization.AuthorizationOK = true
+		}
+	} else {
+		//either user wasn't found (either userID doesn't exist or password incorrect) or
+		//fmt.Println("rows.Err:", rows.Err())
+		if rows.Err() != nil { //something went wrong when preparing to read first row
+			err = fmt.Errorf("error in authorizationCheck, something wrong when preparing rows:  %v", rows.Err())
+		}
+
+	}
+	//There where no such user found
+	return authorization, err
 }
 
 // for checking a username with an already hashed password
@@ -157,7 +233,7 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 	return int32(id), nil
 }
 
-// retursn a user struct from their userID
+// return a user struct from their userID
 func GetUserByID(userID int32) (User, error) {
 	rows, err := db.Query("SELECT Id, Username, PasswordHash, Email, IsAdmin, IsSeller FROM Users WHERE Id = ? ", userID)
 	if err != nil {
@@ -175,6 +251,88 @@ func GetUserByID(userID int32) (User, error) {
 	}
 	return User{}, nil
 }
+
+func changeEmail(email sql.NullString, id int32) (sql.Result, error) {
+	result, err := db.Exec("UPDATE Users SET Email = ? WHERE Id = ?", email, id)
+	if err != nil {
+		fmt.Println("error updating email")
+		return result, err
+	}
+	return result, nil
+}
+
+func changeToSeller(id int32, username string, password string, email sql.NullString) (int32, error) {
+	db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
+	newUser := User{
+		UserID:   id,
+		Username: username,
+		Password: password,
+		Email:    email,
+		IsSeller: true,
+		IsAdmin:  false,
+	}
+	sellerid, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+	if err != nil {
+		fmt.Println("Error adding seller:", err)
+		return 0, fmt.Errorf("AddSeller: %v", err)
+	}
+	if err != nil {
+		fmt.Println("error updating email")
+		return id, err
+	}
+	return sellerid, nil
+}
+
+func promoteToAdmin(idToPromote int32, authorizingId int32, authorizingPwd string) error {
+	auth, err := authorizationCheck(authorizingId, authorizingPwd)
+	if err != nil {
+		return fmt.Errorf("Error in promoteToAdmin: Something went wrong in authorizationCheck:%v", err)
+	}
+	if !auth.AuthorizationOK {
+		return fmt.Errorf("promoteToAdmin failed: authorizing user not found or incorrect password")
+	}
+	if !auth.IsAdmin {
+		return fmt.Errorf("promoteToAdmin failed: authorizing user is not an administrator")
+	}
+	_, err = db.Exec("UPDATE Users SET IsAdmin = ? WHERE Id = ?", true, idToPromote)
+	if err != nil {
+		return fmt.Errorf("Error in promoteToAdmin: Something went wrong when updating database:%v", err)
+	}
+	return nil
+}
+
+func deleteUserAccount(userIDforRemoval int32, authorizingUserID int32, authorizingPwd string) error {
+	auth, err := authorizationCheck(authorizingUserID, authorizingPwd)
+	if err != nil {
+		return fmt.Errorf("Error in deleteUserAccount: Something went wrong in authorizationCheck:%v", err)
+	}
+	if !auth.AuthorizationOK {
+		return fmt.Errorf("deleteUserAccount failed: authorizing user not found or incorrect password")
+	}
+	if !(auth.IsAdmin || authorizingUserID == userIDforRemoval) {
+		return fmt.Errorf("deleteUserAccount failed: authorizing user do not have the right to remove this account (accounts can be removed by themself or by an admin)")
+	}
+	//Deletion is authorized
+	user, err := GetUserByID(userIDforRemoval)
+	if err != nil {
+		return fmt.Errorf("deleteUserAccount failed: could not find the account")
+	}
+	if user.IsSeller {
+		booklist, err := GetSellerBooks(userIDforRemoval)
+		for _, book := range booklist {
+			fmt.Println("removing book:", book.Title)
+			err = removeBook(false, book.BookID) //TODO maybe this should be in a transaction instead? THen can't use function
+			if err != nil {
+				return fmt.Errorf("deleteUserAccount failed: user is seller and failed to remove book with ID: %v and title: %v", book.BookID, book.Title)
+			}
+		}
+		fmt.Println("book removal complete")
+	}
+
+	return nil
+}
+
+//---------BOOKS----------
 
 /*
 //There where two functions that did this
@@ -256,37 +414,6 @@ func AddBook(book Book) (int32, error) {
 	}
 	return int32(id), nil
 
-}
-
-func changeEmail(email sql.NullString, id int32) (sql.Result, error) {
-	result, err := db.Exec("UPDATE Users SET Email = ? WHERE Id = ?", email, id)
-	if err != nil {
-		fmt.Println("error updating email")
-		return result, err
-	}
-	return result, nil
-}
-
-func changeToSeller(id int32, username string, password string, email sql.NullString) (int32, error) {
-	db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
-	newUser := User{
-		UserID:   id,
-		Username: username,
-		Password: password,
-		Email:    email,
-		IsSeller: true,
-		IsAdmin:  false,
-	}
-	sellerid, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
-	if err != nil {
-		fmt.Println("Error adding seller:", err)
-		return 0, fmt.Errorf("AddSeller: %v", err)
-	}
-	if err != nil {
-		fmt.Println("error updating email")
-		return id, err
-	}
-	return sellerid, nil
 }
 
 func editBook(book Book) (int32, error) {
@@ -458,6 +585,40 @@ func viewBooks() ([]Book, error) {
 }
 */
 
+/*
+func DisplayBooklist(books []Book) {
+	// just for testing purposes
+	var edition string
+	fmt.Println("| Ttitle | Edition | stock amount | seller name | ")
+	for _, b := range books {
+		if b.Edition.Valid {
+			edition = b.Edition.String
+		} else {
+			edition = "NULL"
+		}
+		fmt.Println("|", b.Title, "|", edition, "|", b.StockAmount, "|")
+
+	}
+}
+*/
+
+func GetBookById(bookID int32) (Book, error) {
+	rows, err := db.Query("SELECT Id, Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
+	if err != nil {
+		return Book{}, fmt.Errorf("getBookById1: %v", err)
+	}
+	var book Book
+	for rows.Next() {
+		err := rows.Scan(&book.BookID, &book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
+		if err != nil {
+			return Book{}, fmt.Errorf("getBookById2: %v", err)
+		}
+	}
+	return book, nil
+}
+
+//------SHOPPING CART-----------------
+
 func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
 	if err != nil || !successLogin {
@@ -558,34 +719,72 @@ func GetShoppingChartBooks(user User) ([]Book, []int32, error) {
 	return books, counts, nil
 }
 
-/*
-func DisplayBooklist(books []Book) {
-	// just for testing purposes
-	var edition string
-	fmt.Println("| Ttitle | Edition | stock amount | seller name | ")
-	for _, b := range books {
-		if b.Edition.Valid {
-			edition = b.Edition.String
-		} else {
-			edition = "NULL"
-		}
-		fmt.Println("|", b.Title, "|", edition, "|", b.StockAmount, "|")
-
-	}
-}
-*/
-
-func GetBookById(bookID int32) (Book, error) {
-	rows, err := db.Query("SELECT Id, Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
+// -------ORDERS --------------
+func getOrdersBySeller(sellerID int32, authorizingUserID int32, authorizingPwd string) ([]Order, error) {
+	var orders []Order
+	//Check authorization
+	auth, err := authorizationCheck(authorizingUserID, authorizingPwd)
 	if err != nil {
-		return Book{}, fmt.Errorf("getBookById1: %v", err)
+		return orders, fmt.Errorf("Error in getOrdersBySeller: Something went wrong in authorizationCheck:%v", err)
 	}
-	var book Book
-	for rows.Next() {
-		err := rows.Scan(&book.BookID, &book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
-		if err != nil {
-			return Book{}, fmt.Errorf("getBookById2: %v", err)
-		}
+	if !auth.AuthorizationOK {
+		return orders, fmt.Errorf("getOrdersBySeller failed: authorizing user not found or incorrect password")
 	}
-	return book, nil
+	if !(auth.IsAdmin || authorizingUserID == sellerID) {
+		return orders, fmt.Errorf("getOrdersBySeller failed: authorizing user do not have the right to see this sellers orders (only allowed for seller themself and administrators)")
+	}
+	//Authorization ok
+
+	rows, err := db.Query("SELECT Id, SellerID, CustomerID,TimeEntered,TimeConfirmed,TimeSent,TimePaymentReceived,PaymentReceived,PaymentMethod,Status,DeliveryAddress,BillingAddress FROM Orders WHERE SellerID = ?", sellerID)
+	if err != nil {
+		return orders, err
+	}
+	defer rows.Close()
+	/*	fmt.Println(rows.Columns())
+		cts, err := rows.ColumnTypes()
+		for i, ct := range cts {
+			fmt.Println(i, ct)
+		}	*/
+	return extractOrdersFromRows(rows)
+
 }
+
+func getOrdersByBuyer(buyerID int32, authorizingUserID int32, authorizingPwd string) ([]Order, error) {
+	var orders []Order
+	//Check authorization
+	auth, err := authorizationCheck(authorizingUserID, authorizingPwd)
+	if err != nil {
+		return orders, fmt.Errorf("Error in getOrdersByBuyer: Something went wrong in authorizationCheck:%v", err)
+	}
+	if !auth.AuthorizationOK {
+		return orders, fmt.Errorf("getOrdersByBuyer failed: authorizing user not found or incorrect password")
+	}
+	if !(auth.IsAdmin || authorizingUserID == buyerID) {
+		return orders, fmt.Errorf("getOrdersByBuyer failed: authorizing user do not have the right to see this sellers orders (only allowed for seller themself and administrators)")
+	}
+	//Authorization ok
+	rows, err := db.Query("SELECT Id, SellerID, CustomerID,TimeEntered,TimeConfirmed,TimeSent,TimePaymentReceived,PaymentReceived,PaymentMethod,Status,DeliveryAddress,BillingAddress FROM Orders WHERE CustomerID = ?", buyerID)
+	if err != nil {
+		return orders, err
+	}
+	defer rows.Close()
+
+	return extractOrdersFromRows(rows)
+
+}
+func extractOrdersFromRows(rows *sql.Rows) ([]Order, error) {
+	var orders []Order
+	for rows.Next() {
+		var order Order
+		err := rows.Scan(&order.OrderID, &order.SellerID, &order.CustomerID, &order.TimeEntered,
+			&order.TimeConfirmed, &order.TimeSent, &order.TimePaymentReceived, &order.PaymentReceived,
+			&order.PaymentMethod, &order.Status, &order.DeliveryAddress, &order.BillingAddress)
+		if err != nil {
+			return orders, err
+		}
+		orders = append(orders, order)
+	}
+	return orders, nil
+}
+
+//-------REVIEWS-------------
