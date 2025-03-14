@@ -289,7 +289,12 @@ func bookHandler(w http.ResponseWriter, r *http.Request) {
 		if error != nil {
 			fmt.Printf("some error: %v", error)
 		}
-		fmt.Println(books)
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("Books: ", books)
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(books)
 		if err != nil {
@@ -782,55 +787,58 @@ func removeBookHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
-	books, err := viewBooks()
-	if err != nil {
-		fmt.Println("Failed to get books: ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+//func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
+//	fmt.Println("VIEWBOOKSHANDLER CALLED")
+//	books, err := viewBooks()
+//	if err != nil {
+//		fmt.Println("Failed to get books: ", err)
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//		return
+//	}
 
-	var formattedBooks []map[string]interface{}
+//	var formattedBooks []map[string]interface{}
 
-	for _, book := range books {
-		if !book.Price.Valid {
-			book.Price = sql.NullInt32{0, true}
-		}
-		formattedBooks = append(formattedBooks, map[string]interface{}{
-			"bookId":      book.BookID,
-			"title":       book.Title,
-			"sellerid":    book.SellerID,
-			"author":      book.Author,
-			"description": book.Description.String,
-			"price":       book.Price,
-			"edition":     book.Edition.String,
-			"stockAmount": book.StockAmount,
-			"available":   book.Available,
-			"isbn":        book.ISBN,
-			"numrating":   book.NumRatings,
-			"sumrating":   book.SumRatings,
-		})
-	}
+//	for _, book := range books {
+//		if !book.Price.Valid {
+//			book.Price = sql.NullInt32{0, true}
+//		}
+//		formattedBooks = append(formattedBooks, map[string]interface{}{
+//			"bookId":      book.BookID,
+//			"title":       book.Title,
+//			"sellerid":    book.SellerID,
+//			"author":      book.Author,
+//			"description": book.Description.String,
+//			"price":       book.Price,
+//			"edition":     book.Edition.String,
+//			"stockAmount": book.StockAmount,
+//			"available":   book.Available,
+//			"isbn":        book.ISBN,
+//			"numrating":   book.NumRatings,
+//			"sumrating":   book.SumRatings,
+//		})
+//	}
 
-	fmt.Printf("Books: %+v\n", formattedBooks)
+//	fmt.Printf("Books: %+v\n", formattedBooks)
 
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"books":  formattedBooks,
-	})
-	if err != nil {
-		fmt.Println("Failed to encode response: ", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
+//	w.Header().Set("Content-Type", "application/json")
+//	err = json.NewEncoder(w).Encode(map[string]interface{}{
+//		"status": "success",
+//		"books":  formattedBooks,
+//	})
+//	if err != nil {
+//		fmt.Println("Failed to encode response: ", err)
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//	}
+//}
 
 func getReviewHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("getReviewHandler called")
 
-	bookId := 1
+	bookIdstr := r.URL.Query().Get("bookID")
+	bookId, err := strconv.Atoi(bookIdstr)
+	fmt.Println("bookid", bookIdstr)
 
-	reviews, err := getReviews(bookId)
+	reviews, sumRatings, err := getReviews(int32(bookId))
 	if err != nil {
 		fmt.Println("failed to get reviews ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -853,12 +861,14 @@ func getReviewHandler(w http.ResponseWriter, r *http.Request) {
 		i++
 	}
 
-	fmt.Printf("Books: %+v\n", formattedReviews)
+	fmt.Printf("Reviews: %+v\n", formattedReviews)
+	fmt.Println("sumrating", sumRatings)
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "success",
-		"reviews": formattedReviews,
+		"status":     "success",
+		"reviews":    formattedReviews,
+		"sumRatings": sumRatings,
 	})
 	if err != nil {
 		fmt.Println("Failed to encode response: ", err)
@@ -934,7 +944,7 @@ func main() {
 	http.HandleFunc("/changeToSeller", changeToSellerHandler)
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
-	http.HandleFunc("/viewBooks", viewBooksHandler)
+	//http.HandleFunc("/viewBooks", viewBooksHandler)
 	http.HandleFunc("/get_review", getReviewHandler)
 	http.HandleFunc("/create_review", createReviewHandler)
 	//http.HandleFunc("POST /", viewHandler)

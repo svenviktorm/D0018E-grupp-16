@@ -80,8 +80,8 @@ CREATE TABLE Orders_books(
 
 CREATE TABLE BookReviews(
     Id INT NOT NULL,
-    BookId INT NOT NULL,
-    UserId INT NOT NULL,
+    BookID INT NOT NULL,
+    UserID INT NOT NULL,
     Text VARCHAR(2500),
     Rating TINYINT ,
     PRIMARY KEY (Id),

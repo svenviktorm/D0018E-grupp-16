@@ -71,12 +71,14 @@
     <button onclick="addToCart()">Add to cart</button>
     <input type="number" name="count" id="count"><br><br>
     <h3><b>Reviews</b></h3>
+    <p id="sumRatings">Rating</p>
     <form id="reviewForm" style="display: none;">
         <p>Leave a review</p>
-        <input type="number" id="reviewRating" name="revewRating" placeholder="Enter a rating" pattern="[0-5]{1}">
-        <input type="text" id="reviewText" name="revewText" placeholder="Enter a text">
+        <input type="number" id="reviewRating" name="revewRating" placeholder="Rating" pattern="[0-5]{1}" style="width: 70px;">
+        <input type="text" id="reviewText" name="revewText" placeholder="Text" style="width: 50px;">
         <button type="submit" onclick="submitReview()">Submit review</button>
     </form>
+    <div id="reviews"></div>
     <button onclick="closeDetails()">Close</button>
     
 </div>
@@ -301,6 +303,8 @@ function showBookDetails(book) {
 
     detailedBook.style.display = "block";
 
+    fetchReviews(book.bookId);
+
     /*
     document.getElementById("editBookButton").addEventListener('click', function() {
         editBook(book);
@@ -414,6 +418,43 @@ async function submitReview() {
         alert("An error occurred while submitting the review")
     }
  }
+
+async function fetchReviews(bookId) {
+    try {
+        const response = await fetch(`/get_review?bookID=${bookId}`)
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`)
+        }
+
+        const data = await response.json()
+        console.log("reviews", data.reviews)
+        console.log("sumRatings", data.sumRatings)
+
+        const reviews= document.getElementById("reviews")
+        const sumRatingElement = document.getElementById("sumRatings")
+        sumRatingElement.innerHTML = `<p><strong>Average rating:</strong> ${data.sumRatings}/5</p><hr>`
+        reviews.innerHTML = ""
+
+        if (data.reviews.length === 0) {
+            reviews.innerHTML = "<p>No reviews yet</p>"
+            return;
+        }
+
+        data.reviews.forEach(review => {
+            const reviewElement = document.createElement("div")
+            reviewElement.classList.add("review")
+            reviewElement.innerHTML = 
+                `<p><strong>Rating:</strong> ${review.rating}/5</p>
+                <p><strong>Review:</strong> ${review.text ? review.text : "No review text"}</p>
+                <hr>`
+            reviews.appendChild(reviewElement)
+        })
+
+    } catch (error) {
+        console.error("error fetching reviews", error)
+        reviews.innerHTML = "<p>No reviews yet</p>"
+    }
+}
 </script>
 
 </body>

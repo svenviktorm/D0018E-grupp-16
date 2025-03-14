@@ -366,33 +366,32 @@ func createReview(userId int32, bookId int32, text string, rating int) error {
 	return nil
 }
 
-func getReviews(bookId int) ([]BookReview, error) {
+func getReviews(bookId int32) ([]BookReview, int, error) {
+	fmt.Println("getReviews called", bookId)
+
+	var sumRatings int
+	err := db.QueryRow("SELECT SumRatings FROM Books WHERE Id = ?", bookId).Scan(&sumRatings)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get sumRatings: %v", err)
+	}
+
 	rows, err := db.Query("SELECT Id, BookID, UserID, Text, Rating FROM BookReviews WHERE BookID = ?", bookId)
 	if err != nil {
-		return nil, fmt.Errorf("getReview1: %v")
+		return nil, 0, fmt.Errorf("getReview1: %v", err)
 	}
+	defer rows.Close()
 	var reviews []BookReview
 	for rows.Next() {
-		var bookID int32
-		var userID int32
-		err := rows.Scan(&bookID, &userID)
-		if err != nil {
-			return nil, fmt.Errorf("getReviews2: %v")
-		}
-
 		var bookReview BookReview
-		for rows.Next() {
-			err := rows.Scan(&bookReview.Id, &bookReview.BookID, &bookReview.UserID, &bookReview.Text, &bookReview.Rating)
-			if err != nil {
-				return nil, fmt.Errorf("getBookById2: %v")
-			}
+		err := rows.Scan(&bookReview.Id, &bookReview.BookID, &bookReview.UserID, &bookReview.Text, &bookReview.Rating)
+		if err != nil {
+			return nil, 0, fmt.Errorf("getBookById2: %v", err)
 		}
-
 		reviews = append(reviews, bookReview)
 		fmt.Println("bookreview: ", bookReview)
 	}
 
-	return reviews, nil
+	return reviews, sumRatings, nil
 }
 
 /*
@@ -536,28 +535,27 @@ func GetSellerBooks(sellerID int32) ([]Book, error) {
 	return books, nil
 }
 
-// I think this isn't used anymore? yes still used
-func viewBooks() ([]Book, error) {
+// I think this isn't used anymore?
+//func viewBooks() ([]Book, error) {
 
-	var books []Book
+//	var books []Book
 
-	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+//	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books")
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer rows.Close()
 
-	for rows.Next() {
-		var book Book
-		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
-		if err != nil {
-			return nil, err
-		}
-		books = append(books, book)
-	}
-
-	return books, nil
-}
+//	for rows.Next() {
+//		var book Book
+//		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
+//		if err != nil {
+//			return nil, err
+//		}
+//		books = append(books, book)
+//	}
+//	return books, nil
+//}
 
 func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
