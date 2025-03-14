@@ -27,7 +27,74 @@
     <a id="loginoutbutton" href="javascript:void(0);"
            onclick="logInOut()">Log In/Create account</a>
 </div>
+
+<div class="flex-container">
+    <form id="searchform">
+        <input id="search" name="search" type="text" placeholder=" Search book">
+        <select id="searchtype" name="type">
+            <option value="Title">Title</option>
+            <option value="Author">Author</option>
+            <!--<option value="Seller">Seller</option>-->
+            <option value="ISBN">ISBN</option>
+          </select>
+        <button type="submit">search</button> 
+
+    </form>
+</div>
+ <!--<input type="text" id="inputField" placeholder="Enter text here">
+    <button onclick="sendText()">Send</button>-->
+
+<div class="flex-container"> 
+    <!-- <div id="book">
+        <div class="card">
+            <div class="container">
+                <h4><b>Book</b></h4>
+            </div>
+        </div> 
+    </div>   -->
+
+    <div class="row">
+        <div id="books"></div>
+    </div>
+
+</div> 
+
+<div id="detailedCard" class="detailed-card" style="display:none;">
+    <h3 id="detailedBookTitle"></h3>
+    <p><b>Author:</b> <span id="detailedBookAuthor"></span></p>
+    <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
+    <p><b>Price:</b> <span id="detailedBookPrice"></span> kr</p>
+    <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
+    <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
+    <!--<p><b>Available:</b> <span id="detailedBookAvailable"></span></p>-->
+    <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
+    <button onclick="addToCart()">Add to cart</button>
+    <input type="number" name="count" id="count"><br><br>
+    <h3><b>Reviews</b></h3>
+    <form id="reviewForm" style="display: none;">
+        <p>Leave a review</p>
+        <input type="number" id="reviewRating" name="revewRating" placeholder="Enter a rating" pattern="[0-5]{1}">
+        <input type="text" id="reviewText" name="revewText" placeholder="Enter a text">
+        <button type="submit" onclick="submitReview()">Submit review</button>
+    </form>
+    <button onclick="closeDetails()">Close</button>
+    
+</div>
+
+
+</div>
+
+<!--<div class="row">
+    <div id="books"></div>
+</div>-->
+
+
+<div class="row">
+    <div id="detailedBooksCard"></div>
+</div>
+
 <script>
+
 IDcookie=getCookie("UserID")
 console.log(IDcookie)
 document.getElementById("sellerpageslink").style.display="none"
@@ -36,6 +103,7 @@ if (IDcookie!=null && IDcookie!=0){
     console.log("logged in")
     document.getElementById("loginoutbutton").innerHTML='Log Out'
     sellercookie=getCookie("IsSeller")
+    document.getElementById("reviewForm").style.display = "block"
     if(sellercookie=="true"){
         document.getElementById("sellerpageslink").style.display="block"
     }
@@ -86,68 +154,6 @@ function getCookie(name) {
     }
     return null;
 }
-</script>
-
-
-<div class="flex-container">
-    <form id="searchform">
-        <input id="search" name="search" type="text" placeholder=" Search book">
-        <select id="searchtype" name="type">
-            <option value="Title">Title</option>
-            <option value="Author">Author</option>
-            <!--<option value="Seller">Seller</option>-->
-            <option value="ISBN">ISBN</option>
-          </select>
-        <button type="submit">search</button> 
-
-    </form>
-</div>
- <!--<input type="text" id="inputField" placeholder="Enter text here">
-    <button onclick="sendText()">Send</button>-->
-
-<div class="flex-container"> 
-    <!-- <div id="book">
-        <div class="card">
-            <div class="container">
-                <h4><b>Book</b></h4>
-            </div>
-        </div> 
-    </div>   -->
-
-    <div class="row">
-        <div id="books"></div>
-    </div>
-
-</div> 
-
-<div id="detailedCard" class="detailed-card" style="display:none;">
-    <h3 id="detailedBookTitle"></h3>
-    <p><b>Author:</b> <span id="detailedBookAuthor"></span></p>
-    <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
-    <p><b>Price:</b> <span id="detailedBookPrice"></span> kr</p>
-    <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
-    <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
-    <!--<p><b>Available:</b> <span id="detailedBookAvailable"></span></p>-->
-    <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
-    <button onclick="addToCart()">Add to cart</button>
-    <input type="number" name="count" id="count">
-    <button onclick="closeDetails()">Close</button>
-    
-</div>
-
-
-</div>
-
-<!--<div class="row">
-    <div id="books"></div>
-</div>-->
-
-
-<div class="row">
-    <div id="detailedBooksCard"></div>
-</div>
-
-<script>
 
   const form = document.querySelector("#searchform");
   const books = document.getElementById("books");
@@ -375,6 +381,39 @@ console.log(searchParams)
                 */
             .catch(error => console.error("Error:", error));
         }
+
+async function submitReview() {
+    let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
+    let reviewText = document.getElementById("reviewText").value
+    let reviewRating = document.getElementById("reviewRating").value
+
+    try {
+        const formData = new URLSearchParams()
+        formData.append("bookID", bookId)
+        formData.append("text", reviewText)
+        formData.append("rating", reviewRating)
+
+        const response = await fetch("/create_review", {
+            method: "POST",
+            body: formData,
+        })
+
+        const responseData = await response.json()
+
+        if (response.ok) {
+            console.log("review submitted successfully")
+            alert("Review submitted successfully")
+
+            document.getElementById("reviewForm").reset()
+        } else {
+            console.error("failed to submit review", responseData.message)
+            alert("Failed to submit review. Please try again", responseData.message)
+        }
+    } catch (error) {
+        console.error("error submitting review", error)
+        alert("An error occurred while submitting the review")
+    }
+ }
 </script>
 
 </body>
