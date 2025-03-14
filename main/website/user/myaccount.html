@@ -35,7 +35,11 @@
 </div>
 
 <div>
-    <p>Shopping cart:</p>
+    <form id="becomeSellerForm" style="display: none;">
+        <input type="text" name="name" id="name" placeholder="Enter a name" autocomplete="name" required>
+        <input type="text" name="description" id="description" placeholder="Enter a description" autocomplete="description" required>
+        <button id="becomeSellerSubmitButton" type="submit">Submit</button>
+    </form>
 </div>
 
 <script>
@@ -54,26 +58,46 @@ function getCookie(name) {
     return null;
 }
 
-document.getElementById("sellerButton").addEventListener("click", async function(event) {
-    console.log("selerButton pressed")
-    console.log(getCookie("Password"))
+const formSeller = document.getElementById("becomeSellerForm")
+document.getElementById("sellerButton").addEventListener("click", function() {
+
+    if (formSeller.style.display === "none" || formSeller.style.display === "") {
+         formSeller.style.display = "block"
+     } else {
+         formSeller.style.display = "none"
+     }
+ })
+ 
+ document.getElementById("becomeSellerForm").addEventListener("submit", async function(event) {
+     event.preventDefault()
+     console.log("becomeSellerSubmitButton pressed")
+
     if (getCookie("IsSeller") == "false") {
+        //const form = document.getElementById("becomeSellerForm")
+        const form = document.querySelector("#becomeSellerForm");
+        const formData = new FormData(form)
+        const searchParams = new URLSearchParams(formData)
+        sends = "IsSeller=true" + searchParams
+        console.log(formData)
+        console.log("serachParams: ", searchParams.toString())
         try {
             const response = await fetch("/changeToSeller", {
                     method: "POST",
-                    body: "IsSeller=true",
+                    body: searchParams,
                 });
             if (response.ok){
                 const user=await response.json()
-                document.cookie="IsSeller="+true
                 alert("You are now a seller")
                 console.log("isSeller request")
+                form.style.display = "none";
+                form.reset()
                 
             } else {
-                console.log("error changing to seller")
+                console.log("error changing to seller1")
             }
         } catch (error) {
             console.error(error);
+            console.log("error changing to seller2")
         }
     } else {
         alert("You already are a seller")

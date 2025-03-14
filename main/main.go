@@ -57,8 +57,8 @@ type Album struct {
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewHandler called")
 	requestPath := r.URL.Path
-	fmt.Println(requestPath)
-	fmt.Println(r.Header)
+	//fmt.Println(requestPath)
+	//fmt.Println(r.Header)
 	if requestPath == "/" {
 		http.ServeFile(w, r, "website/start.html")
 	} else {
@@ -300,6 +300,7 @@ func bookHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Unsupportet request type to users API")
 	}
 }
+
 func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("addBookHandler called")
 	if r.Method != http.MethodPost {
@@ -327,7 +328,12 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	// get the userID cookie
 	IDcookie, err := r.Cookie("UserID")
-
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println(book.ISBN)
 	// convert cookie to integee
 	var sellerId string = IDcookie.Value
 
@@ -390,16 +396,14 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 	var formattedBooks []map[string]interface{}
 
 	for _, book := range books {
-		fmt.Println("Price: ", book.Price)
-		fmt.Println("Author: ", book.Author)
 		if !book.Price.Valid {
 			book.Price = sql.NullInt32{0, true}
 		}
 		formattedBooks = append(formattedBooks, map[string]interface{}{
 			"bookId":      book.BookID,
 			"title":       book.Title,
-			"author":      book.Author,
 			"sellerid":    book.SellerID,
+			"author":      book.Author,
 			"description": book.Description.String,
 			"price":       book.Price,
 			"edition":     book.Edition.String,
@@ -408,8 +412,6 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			"isbn":        book.ISBN,
 		})
 	}
-
-	fmt.Printf("Books: %+v\n", formattedBooks)
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -623,6 +625,12 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 
+		//err := r.ParseForm()
+		//if err != nil {
+		//	http.Error(w, "Error parsing form", http.StatusBadRequest)
+		//	return
+		//}
+
 		IDcookie, err := r.Cookie("UserID")
 		if err != nil {
 			fmt.Println("error getting userID from cookie")
@@ -647,7 +655,7 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 
 		passwordCookie, err := r.Cookie("Password")
 		if err != nil {
-			fmt.Print("error email not found", err)
+			fmt.Print("error password not found", err)
 			return
 		}
 
@@ -658,13 +666,30 @@ func changeToSellerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		username := usernameCookie.Value
+		name := r.FormValue("name")
 		password := passwordCookie.Value
 		email := sql.NullString{String: emailCookie.Value, Valid: true}
+		description := r.FormValue("description")
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("description:", description)
 
-		changedSeller, err := changeToSeller(int32(userID), username, password, email)
+		changedSeller, err := changeToSeller(int32(userID), username, password, email, description, name)
+		fmt.Println("changeToSeller called", description)
+		fmt.Println("körs ens denna")
 		if err != nil {
 			fmt.Println("error changing to seller:", err)
 			return
+		}
+		if err == nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{"message": "Seller status updated successfully"})
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
 		}
 		fmt.Println("changed to seller: ", changedSeller)
 
@@ -757,8 +782,6 @@ func removeBookHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-/*
-//I think this isn't used anymore
 func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
 	books, err := viewBooks()
 	if err != nil {
@@ -776,8 +799,8 @@ func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
 		formattedBooks = append(formattedBooks, map[string]interface{}{
 			"bookId":      book.BookID,
 			"title":       book.Title,
-			"author":      book.Author,
 			"sellerid":    book.SellerID,
+			"author":      book.Author,
 			"description": book.Description.String,
 			"price":       book.Price,
 			"edition":     book.Edition.String,
@@ -799,7 +822,7 @@ func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
-*/
+
 // *** Variables ***
 var db *sql.DB
 
@@ -809,7 +832,7 @@ func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:                 "root",
-		Passwd:               "AnkaAnka",
+		Passwd:               "AnkaAnka", //"AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",
@@ -837,7 +860,7 @@ func main() {
 	http.HandleFunc("/changeToSeller", changeToSellerHandler)
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
-	//http.HandleFunc("/viewBooks", viewBooksHandler)
+	http.HandleFunc("/viewBooks", viewBooksHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)

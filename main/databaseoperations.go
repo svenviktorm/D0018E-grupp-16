@@ -35,7 +35,7 @@ type Book struct {
 	Description sql.NullString `json:"description"`
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
 	Available   bool           `json:"available"`   //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
-	ISBN        sql.NullInt32  `json:"isbn"`
+	ISBN        sql.NullInt64  `json:"isbn"`
 	NumRatings  sql.NullInt32
 	SumRatings  sql.NullInt32
 	Price       sql.NullInt32 `json:"price"`
@@ -133,7 +133,16 @@ func AddSeller(user User, name string, description sql.NullString) (int32, error
 	if dberr != nil {
 		return -2, fmt.Errorf("transaction error:", dberr)
 	}
-	result, err := tx.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, description)
+
+	var descriptionValue interface{}
+	if description.Valid {
+		descriptionValue = description.String
+	} else {
+		descriptionValue = nil
+	}
+
+	result, err := tx.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", name, user.UserID, descriptionValue)
+
 	if err != nil {
 		tx.Rollback()
 		fmt.Println("rollback!!!!!!")
@@ -246,7 +255,12 @@ func AddBook(book Book) (int32, error) {
 	if !loginSucces {
 		return -1, fmt.Errorf("Addbook: loginsfail %v", loginerr)
 	}*/
-
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println(book.ISBN)
 	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
 	if err != nil {
 		return -1, fmt.Errorf("addBook: %v", err)
@@ -268,7 +282,7 @@ func changeEmail(email sql.NullString, id int32) (sql.Result, error) {
 	return result, nil
 }
 
-func changeToSeller(id int32, username string, password string, email sql.NullString) (int32, error) {
+func changeToSeller(id int32, username string, password string, email sql.NullString, description string, name string) (int32, error) {
 	db.Exec("UPDATE Users SET IsSeller = ? WHERE Id = ?", true, id)
 	newUser := User{
 		UserID:   id,
@@ -278,7 +292,7 @@ func changeToSeller(id int32, username string, password string, email sql.NullSt
 		IsSeller: true,
 		IsAdmin:  false,
 	}
-	sellerid, err := AddSeller(newUser, username, sql.NullString{String: "", Valid: false})
+	sellerid, err := AddSeller(newUser, name, sql.NullString{String: description, Valid: true})
 	if err != nil {
 		fmt.Println("Error adding seller:", err)
 		return 0, fmt.Errorf("AddSeller: %v", err)
@@ -434,8 +448,7 @@ func GetSellerBooks(sellerID int32) ([]Book, error) {
 	return books, nil
 }
 
-/*
-//I think this isn't used anymore?
+// I think this isn't used anymore? yes still used
 func viewBooks() ([]Book, error) {
 
 	var books []Book
@@ -457,7 +470,6 @@ func viewBooks() ([]Book, error) {
 
 	return books, nil
 }
-*/
 
 func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
