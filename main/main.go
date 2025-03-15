@@ -115,7 +115,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 
 		user, loginOK, err := LogInCheckNotHashed(uname, pwd)
 		user.Password = pwd
-		fmt.Printf("login ok?:%v, username: %v userID:%v seller?:%v, admin?:%v ", loginOK, user.Username, user.UserID, user.IsSeller, user.IsAdmin)
+		fmt.Printf("login ok?:%v, err:%v, username: %v userID:%v seller?:%v, admin?:%v ", loginOK, err, user.Username, user.UserID, user.IsSeller, user.IsAdmin)
 
 		fmt.Println("")
 		if loginOK {

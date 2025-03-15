@@ -365,7 +365,7 @@ func deleteUserAccount(userIDforRemoval int32, authorizingUserID int32, authoriz
 		return fmt.Errorf("deleteUserAccount failed: authorizing user not found or incorrect password")
 	}
 	if !(auth.IsAdmin || authorizingUserID == userIDforRemoval) {
-		return fmt.Errorf("deleteUserAccount failed: authorizing user do not have the right to remove this account (accounts can be removed by themself or by an admin)")
+		return fmt.Errorf("deleteUserAccount failed: authorizing user do not have the right to remove this account (accounts can be removed by themselves or by an admin)")
 	}
 	//Deletion is authorized
 	user, err := GetUserByID(userIDforRemoval)
@@ -399,9 +399,9 @@ func deleteUserAccount(userIDforRemoval int32, authorizingUserID int32, authoriz
 		booklist, err := GetSellerBooks(userIDforRemoval)
 		for _, book := range booklist {
 			fmt.Println("removing book:", book.Title)
-			_, err = tx.Exec("UPDATE Books SET Available = ? WHERE Books.Id = ?", false, book)
+			_, err = tx.Exec("UPDATE Books SET Available = ? WHERE Books.Id = ?", false, book.BookID)
 			if err != nil {
-				return fmt.Errorf("deleteUserAccount failed: user is seller and failed to remove book with ID: %v and title: %v", book.BookID, book.Title)
+				return fmt.Errorf("deleteUserAccount failed: user is seller and failed to remove book with ID: %v and title: %v. Error:%v", book.BookID, book.Title, err)
 			}
 		}
 		fmt.Println("book removal complete")
@@ -412,7 +412,7 @@ func deleteUserAccount(userIDforRemoval int32, authorizingUserID int32, authoriz
 		}
 	}
 	//Now we can 'delete' the account
-	_, err = tx.Exec("UPDATE Users Set Username=NULL,Password=0,email=NULL,IsAdmin=false,IsActive=false WHERE Users.Id=?", userIDforRemoval)
+	_, err = tx.Exec("UPDATE Users Set Username=NULL,PasswordHash=0,email=NULL,IsAdmin=false,IsActive=false WHERE Users.Id=?", userIDforRemoval)
 	if err != nil {
 		return fmt.Errorf("Error in deleteUserAccount: something went wrong when clearing the user data: %v ", err)
 	}
