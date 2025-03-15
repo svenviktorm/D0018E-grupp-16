@@ -86,7 +86,8 @@ document.getElementById("sellerButton").addEventListener("click", function() {
                     body: searchParams,
                 });
             if (response.ok){
-                const user=await response.json()
+                const user=await response.json()    
+                document.cookie="IsSeller="+"true"+";Path=/;Max-Age=7200"
                 alert("You are now a seller")
                 console.log("isSeller request")
                 form.style.display = "none";

@@ -600,10 +600,10 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Println("User: ", user)
-	case http.MethodPost:
+	case http.MethodPut:
 		switch r.FormValue("requestType") {
 		case "createOrder":
-			fmt.Println("Post request to order API")
+			fmt.Println("Put request to order API")
 			fmt.Println("This should be an attempt to create an order into reserved")
 			user, err := getUserFromCookies(r)
 			if err != nil {
@@ -617,10 +617,14 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-
+			fmt.Println("Order created")
+			return
+		default:
+			fmt.Println("Unsupportet request type to order API")
+			http.Error(w, "Invalid request type", http.StatusBadRequest)
 		}
 	default:
-		fmt.Println("Unsupportet request type to order API")
+		fmt.Println("Unsupported request type to order API")
 	}
 }
 
@@ -880,7 +884,7 @@ func main() {
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
 	http.HandleFunc("/viewBooks", viewBooksHandler)
-	http.HandleFunc("/orders", viewBooksHandler)
+
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)
@@ -893,6 +897,7 @@ func main() {
 
 	http.HandleFunc("/API/shoppingcart", shoppingCartHandler)
 	http.HandleFunc("/API/books", bookHandler)
+	http.HandleFunc("/API/orders", orderHandler)
 
 	log.Fatal(http.ListenAndServe(":80", nil))
 	fmt.Println("Server uppe!")

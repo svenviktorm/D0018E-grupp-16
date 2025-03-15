@@ -177,17 +177,18 @@ async function clearCart(){
 
 async function buy() {
     try {
-        const response = await fetch("/API/shoppingcart", {
-            method: "POST",
+        const formData = new URLSearchParams()
+        formData.append("requestType", "createOrder")
+        const response = await fetch("/API/orders", {
+            method: "PUT",
+            body: formData,
         })
-        const data = await response.json()
-        if (data.status === "success") {
-            alert("Books reserved")
-            await displayCart()
-        } else {
-            console.error("Failed to reserve books:", data)
-        }
+        const data = await response.text()
+        alert(data)
+        await displayCart()
+        console.log("data:", data)
     } catch (error) {
+        alert(error)
         console.error("Error reserving books:", error)
     }   
     
