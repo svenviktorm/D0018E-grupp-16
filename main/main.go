@@ -734,15 +734,36 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			password := passwordCookie.Value
 		*/
 		/*
-			username := usernameCookie.Value
-			name := r.FormValue("name")
-			description := r.FormValue("description")
-			fmt.Println("name:", name)
-			fmt.Println("description:", description)
+				username := usernameCookie.Value
+				name := r.FormValue("name")
+				description := r.FormValue("description")
+				fmt.Println("name:", name)
+				fmt.Println("description:", description)
 
-			changedSeller, err := changeToSeller(int32(user.UserID), user.Username, user.Password, user.Email, description, name)
-			fmt.Println("changeToSeller called", description)
-			fmt.Println("körs ens denna")
+				changedSeller, err := changeToSeller(int32(user.UserID), user.Username, user.Password, user.Email, description, name)
+			passwordCookie, err := r.Cookie("Password")
+			if err != nil {
+				fmt.Print("error password not found", err)
+				http.Error(w, "User not authenticated", http.StatusUnauthorized)
+				return
+			}
+			password := passwordCookie.Value
+
+			/*
+				username := usernameCookie.Value
+				name := r.FormValue("name")
+				password := passwordCookie.Value
+				email := sql.NullString{String: emailCookie.Value, Valid: true}
+				description := r.FormValue("description")
+				fmt.Println()
+				fmt.Println()
+				fmt.Println()
+				fmt.Println()
+				fmt.Println("description:", description)
+
+				changedSeller, err := changeToSeller(int32(userID), username, password, email, description, name)
+				fmt.Println("changeToSeller called", description)
+				fmt.Println("körs ens denna")
 		*/
 		sellerName := r.FormValue("name")
 		description := r.FormValue("description")
