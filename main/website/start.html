@@ -334,6 +334,7 @@ async function addToCart() {
             console.error("Failed to add book to cart.");
         }
     } catch (error) {
+        alert(error)
         console.error("Error adding to cart:", error);
     }
 }

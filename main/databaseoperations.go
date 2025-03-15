@@ -494,6 +494,20 @@ func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32
 			return -quantity, fmt.Errorf("AddBookToShoppingCart: More than one row returned")
 		}
 	}
+	var bookCount int32 = 0
+	rows, err = db.Query("SELECT StockAmount FROM Books WHERE Id = ?", bookID)
+	if err != nil {
+		return -quantity, fmt.Errorf("AddBookToShoppingCart4: %v", err)
+	}
+	for rows.Next() {
+		err := rows.Scan(&bookCount)
+		if err != nil {
+			return -quantity, fmt.Errorf("AddBookToShoppingCart5: %v", err)
+		}
+	}
+	if bookCount < count {
+		return -quantity, fmt.Errorf("AddBookToShoppingCart: Not enough books in stock")
+	}
 	if first {
 		_, err := db.Exec("INSERT INTO InShoppingCart (UserID, BookID, Quantity) VALUES (?, ?, ?)", user.UserID, bookID, count)
 		if err != nil {

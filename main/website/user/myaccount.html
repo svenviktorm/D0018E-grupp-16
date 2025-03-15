@@ -15,15 +15,19 @@
     <div class="topnav">
         <a class="active" href="../start.html">Book Store</a>
         <a class="active" href="../register.html">Register</a>
+        <a class="active" href="../orders.html">Orders</a>
+        <a class="active" href="../ordersSeller.html">Seller Orders</a>
     </div>
 </div>
-
+<p id="username"></p>
+<p id="email"></p>
+<p id="selller name"></p>
+<p id="seller description"></p>
 
 
 <div class="row">
     <div class="column">
       <div class="card" id="userInfoCard">
-        <button id="orders">Orders</button><br>
         <button id="changeEmail">Change email</button>
         <form id="viewForm">
             <input name="changeEmail" type="email" placeholder="New email" id="inputChangeEmail" required><br>
@@ -57,7 +61,21 @@ function getCookie(name) {
     }
     return null;
 }
+document.getElementById("username").innerHTML = "Username: " + getCookie("Username");
+document.getElementById("email").innerHTML = "Email: " + getCookie("Email");
+if (getCookie("Email") == null) {
+    document.getElementById("email").innerHTML = "Email: Not set";
+}
+if (getCookie("IsSeller") != "true") {
+    document.getElementById("sellerButton").style.visibility = "hidden";
+    document.getElementById("becomeSellerForm").style.display = "none";
 
+} else {
+    document.getElementById("sellerButton").style.visibility = "visible";
+    document.getElementById("becomeSellerForm").style.display = "block";
+    document.getElementById("sellerName").innerHTML = "Seller name: " + getCookie("SellerName");
+    document.getElementById("sellerDescription").innerHTML = "Seller description: " + getCookie("SellerDescription");
+} 
 const formSeller = document.getElementById("becomeSellerForm")
 document.getElementById("sellerButton").addEventListener("click", function() {
 
