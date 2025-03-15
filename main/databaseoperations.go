@@ -963,24 +963,8 @@ func getOrdersBySeller(sellerID int32, authorizingUserID int32, authorizingPwd s
 
 }
 
-// enum for orderStatus
-const (
-	OrderStatusReserved  = "reserved"
-	OrderStatusConfirmed = "confirmed"
-	OrderStatusPayed     = "payed"
-	OrderStatusSent      = "sent"
-	OrderStatusCanceled  = "canceled"
-	OrderStatusReturned  = "returned"
-)
-
-// enum for paymentMethod
-const (
-	paymentMethodInvoice = "invoice"
-	paymentMethodCard    = "card"
-)
-
 func MakeShoppingCartIntoOrderReserved(userO User) error {
-	user, successLogin, err := LogInCheckNotHashed(userO.Username, userO.Password)
+	user, successLogin, err := LogInCheckNotHashed(userO.Username.String, userO.Password)
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
 	}

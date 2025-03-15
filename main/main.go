@@ -710,6 +710,12 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			sellerId := IDcookie.Value
 			fmt.Println("sellerid", sellerId)
 		*/
+		IDcookie, err := r.Cookie("UserID")
+		if err != nil {
+			fmt.Println("error getting userID from cookie")
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+			return
+		}
 		authUserID, err := strconv.Atoi(IDcookie.Value)
 		fmt.Println(authUserID)
 		if err != nil {
@@ -754,7 +760,7 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		changedSeller, err := UpgradeToSeller(int32(toBeSellerIDint), int32(authUserID), password, sellerName, sql.NullString{description, true})
+		changedSeller, err := UpgradeToSeller(int32(toBeSellerIDint), int32(authUserID), user.Password, sellerName, sql.NullString{description, true})
 		if err != nil {
 			fmt.Println("error changing to seller:", err)
 			switch changedSeller {
