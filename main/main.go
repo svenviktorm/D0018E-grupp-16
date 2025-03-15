@@ -665,65 +665,63 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		/*
-			passwordCookie, err := r.Cookie("Password")
-			if err != nil {
-				fmt.Print("error password not found", err)
-				http.Error(w, "User not authenticated", http.StatusUnauthorized)
-				return
-			}
-			password := passwordCookie.Value
-		*/
-    /*
-		username := usernameCookie.Value
-		name := r.FormValue("name")
+		passwordCookie, err := r.Cookie("Password")
+		if err != nil {
+			fmt.Print("error password not found", err)
+			http.Error(w, "User not authenticated", http.StatusUnauthorized)
+			return
+		}
 		password := passwordCookie.Value
-		email := sql.NullString{String: emailCookie.Value, Valid: true}
-		description := r.FormValue("description")
-		fmt.Println()
-		fmt.Println()
-		fmt.Println()
-		fmt.Println()
-		fmt.Println("description:", description)
 
-		changedSeller, err := changeToSeller(int32(userID), username, password, email, description, name)
-		fmt.Println("changeToSeller called", description)
-		fmt.Println("körs ens denna")
-    */
+		/*
+			username := usernameCookie.Value
+			name := r.FormValue("name")
+			password := passwordCookie.Value
+			email := sql.NullString{String: emailCookie.Value, Valid: true}
+			description := r.FormValue("description")
+			fmt.Println()
+			fmt.Println()
+			fmt.Println()
+			fmt.Println()
+			fmt.Println("description:", description)
+
+			changedSeller, err := changeToSeller(int32(userID), username, password, email, description, name)
+			fmt.Println("changeToSeller called", description)
+			fmt.Println("körs ens denna")
+		*/
 		sellerName := r.FormValue("name")
 		description := r.FormValue("description")
-		
-			toBeSellerIDs := r.FormValue("SellerID")
-			if toBeSellerIDs == "" {
-				fmt.Println("Seller ID missing from request form")
-				http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
-				return
+
+		toBeSellerIDs := r.FormValue("SellerID")
+		if toBeSellerIDs == "" {
+			fmt.Println("Seller ID missing from request form")
+			http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
+			return
+		}
+		toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
+		if err != nil {
+			fmt.Println("Invalid userID")
+			http.Error(w, "Invalid SellerID", http.StatusBadRequest)
+			return
+		}
+
+		changedSeller, err := UpgradeToSeller(int32(toBeSellerIDint), int32(authUserID), password, sellerName, sql.NullString{description, true})
+		if err != nil {
+			fmt.Println("error changing to seller:", err)
+			switch changedSeller {
+			case -1:
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+			case -2:
+				http.Error(w, err.Error(), http.StatusForbidden)
+			case -4:
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			default:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
-			toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
-			if err != nil {
-				fmt.Println("Invalid userID")
-				http.Error(w, "Invalid SellerID", http.StatusBadRequest)
-				return
-			}
-		
-		
-			changedSeller, err := UpgradeToSeller(int32(toBeSellerIDint), int32(authUserID), password, sellerName, sql.NullString{description, true})
-			if err != nil {
-				fmt.Println("error changing to seller:", err)
-				switch changedSeller {
-				case -1:
-					http.Error(w, err.Error(), http.StatusUnauthorized)
-				case -2:
-					http.Error(w, err.Error(), http.StatusForbidden)
-				case -4:
-					http.Error(w, err.Error(), http.StatusBadRequest)
-				default:
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-				}
-				return
-			}
-			fmt.Println("changed to seller: ", changedSeller)
-		
+			return
+		}
+		fmt.Println("changed to seller: ", changedSeller)
+
 		/*
 			if authUserID == toBeSellerIDint {
 				sellerCookie, err := r.Cookie("IsSeller")
@@ -738,8 +736,6 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		*/
-    
-    
 
 		w.WriteHeader(http.StatusOK)
 	case http.MethodGet:
@@ -781,15 +777,12 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
 
-
-
 		if err != nil {
 			fmt.Println("Invalid userID")
 			http.Error(w, "Invalid SellerID", http.StatusBadRequest)
 			return
 		}
-    
-    
+
 		err = UpdateSellerInfo(int32(toBeSellerIDint), int32(authUserID), password, sellerName, sql.NullString{description, true})
 		if err != nil {
 			fmt.Println("error updating seller info:", err)
@@ -813,18 +806,17 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-      /*
-		if err == nil {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"message": "Seller status updated successfully"})
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
-		}
-		fmt.Println("changed to seller: ", changedSeller)
-    */
-
+			/*
+				if err == nil {
+					w.Header().Set("Content-Type", "application/json")
+					json.NewEncoder(w).Encode(map[string]interface{}{"message": "Seller status updated successfully"})
+				} else {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(map[string]interface{}{"error": err.Error()})
+				}
+				fmt.Println("changed to seller: ", changedSeller)
+			*/
 
 			return
 		}
