@@ -11,12 +11,76 @@
 
 <body>
 
-<div id="center">
-    <div class="topnav">
-        <a class="active" href="../start.html">Book Store</a>
-        <a class="active" href="../register.html">Register</a>
-    </div>
-</div>
+<!-- Top menue -->
+<div class="topnav">
+    <a   href="/start.html">Book Store</a>
+    <a  class="active" id="myaccountlink" href="/user/myaccount.html">My Account</a>
+    <a id="shoppingcartlink" href="../shoppingcart.html">Shopping Cart</a>
+    <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
+    <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
+    <a id="loginoutbutton" href="javascript:void(0);"
+           onclick="logInOut()">Log In/Create account</a>
+  </div>
+  <script>
+  IDcookie=getCookie("UserID")
+  console.log(IDcookie)
+  document.getElementById("sellerpageslink").style.display="none"
+  document.getElementById("adminpageslink").style.display="none"
+  if (IDcookie!=null && IDcookie!=0){
+    console.log("logged in")
+    document.getElementById("loginoutbutton").innerHTML='Log Out'
+    sellercookie=getCookie("IsSeller")
+    if(sellercookie=="true"){
+        document.getElementById("sellerpageslink").style.display="block"
+    }
+    admincookie=getCookie("IsAdmin")
+    if(admincookie=="true"){
+        document.getElementById("adminpageslink").style.display="block"
+    }
+  }else{
+    document.getElementById("myaccountlink").style.display="none"
+    
+    document.getElementById("shoppingcartlink").style.display="none"
+  }
+  
+  
+  async function logInOut(){
+    IDcookie=getCookie("UserID")
+  
+    if (IDcookie==null || IDcookie==0){ // not logged in, go to login page
+        location.href="/login.html"
+  
+    }else{//logged in, logging out
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  }
+  }
+  }
+  function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+  }
+  </script>
 
 
 
@@ -76,21 +140,37 @@ document.getElementById("sellerButton").addEventListener("click", function() {
         //const form = document.getElementById("becomeSellerForm")
         const form = document.querySelector("#becomeSellerForm");
         const formData = new FormData(form)
+
+        userID=getCookie("UserID")
+        formData.append("SellerID",userID)
+        /*
+
         const searchParams = new URLSearchParams(formData)
         sends = "IsSeller=true" + searchParams
         console.log(formData)
         console.log("serachParams: ", searchParams.toString())
+
+        */
+
+
         try {
-            const response = await fetch("/changeToSeller", {
+            const response = await fetch("/API/sellers", {
                     method: "POST",
-                    body: searchParams,
+
+                    body: formData,
                 });
             if (response.ok){
-                const user=await response.json()
+                //const user=await response.json()
                 alert("You are now a seller")
-                console.log("isSeller request")
+                console.log(response)
+                console.log(response.headers)
                 form.style.display = "none";
                 form.reset()
+                sessionend=parseInt(getCookie("SessionEnd"))
+                maxage=Math.floor((sessionend-Date.now())/1000)
+                document.cookie="IsSeller=true;Path=/;Max-Age="+maxage
+                location.reload()
+
                 
             } else {
                 console.log("error changing to seller1")
@@ -144,4 +224,3 @@ const form = document.querySelector("#viewForm");
 
 </body>
 </html
-

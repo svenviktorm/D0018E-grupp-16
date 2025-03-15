@@ -9,13 +9,14 @@
     <title>Register Page</title>
 </head>
 <body>
-<div class="topnav">
-    <a class="active" href="../start.html">Book Store</a>
-</div>
+  <div class="topnav">
+    <a  href="/start.html">Book Store</a>
+    <a class="active" id="loginoutbutton" href="/login.html">Log In/Create account</a>
+  </div>
 
 <div class="flex-container">
     <form id="registerform" >
-        <input name="username" type="text" placeholder="username" id="register_username" maxlength="45" pattern="[A-Za-z_]{3,45}"> <br>
+        <input name="username" type="text" placeholder="username" id="register_username" maxlength="45" pattern="[A-Za-z0-9_]{3,45}"> <br>
         <input name="password" type="password" placeholder="password" id="register_password" autocomplete="new-password" required> <br>
         <input name="email" type="email" placeholder="email" id="register_password" autocomplete="email" > <br>
         <!--<input type="radio" id="seller" name="seller" value="seller">

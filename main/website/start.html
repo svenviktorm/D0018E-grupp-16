@@ -21,14 +21,75 @@
 <div class="topnav">
     <a  class="active" href="/start.html">Book Store</a>
     <a  id="myaccountlink" href="/user/myaccount.html">My Account</a>
-    <a  href="../shoppingcart.html">Shopping Cart</a>
+    <a id="shoppingcartlink" href="../shoppingcart.html">Shopping Cart</a>
     <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
     <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
     <a id="loginoutbutton" href="javascript:void(0);"
            onclick="logInOut()">Log In/Create account</a>
-</div>
+  </div>
+  <script>
 
-<div class="flex-container">
+IDcookie=getCookie("UserID")
+console.log(IDcookie)
+document.getElementById("sellerpageslink").style.display="none"
+document.getElementById("adminpageslink").style.display="none"
+if (IDcookie!=null && IDcookie!=0){
+console.log("logged in")
+    document.getElementById("loginoutbutton").innerHTML='Log Out'
+    sellercookie=getCookie("IsSeller")
+    document.getElementById("reviewForm").style.display = "block"
+    if(sellercookie=="true"){
+        document.getElementById("sellerpageslink").style.display="block"
+    }
+    admincookie=getCookie("IsAdmin")
+    if(admincookie=="true"){
+        document.getElementById("adminpageslink").style.display="block"
+    }
+  }else{
+    document.getElementById("myaccountlink").style.display="none"
+    
+    document.getElementById("shoppingcartlink").style.display="none"
+  }
+  
+  
+  async function logInOut(){
+    IDcookie=getCookie("UserID")
+  
+    if (IDcookie==null || IDcookie==0){ // not logged in, go to login page
+        location.href="/login.html"
+  
+    }else{//logged in, logging out
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  }
+  }
+  }
+  function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+      }
+  </script>
+  <div class="flex-container">
     <form id="searchform">
         <input id="search" name="search" type="text" placeholder=" Search book">
         <select id="searchtype" name="type">
@@ -41,7 +102,8 @@
 
     </form>
 </div>
- <!--<input type="text" id="inputField" placeholder="Enter text here">
+ 
+  <!--<input type="text" id="inputField" placeholder="Enter text here">
     <button onclick="sendText()">Send</button>-->
 
 <div class="flex-container"> 
@@ -59,7 +121,7 @@
 
 </div> 
 
-<div id="detailedCard" class="detailed-card" style="display:none;">
+  <div id="detailedCard" class="detailed-card" style="display:none;">
     <h3 id="detailedBookTitle"></h3>
     <p><b>Author:</b> <span id="detailedBookAuthor"></span></p>
     <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
@@ -84,6 +146,7 @@
 </div>
 
 
+
 </div>
 
 <!--<div class="row">
@@ -95,67 +158,12 @@
     <div id="detailedBooksCard"></div>
 </div>
 
+
+    
+
+
 <script>
 
-IDcookie=getCookie("UserID")
-console.log(IDcookie)
-document.getElementById("sellerpageslink").style.display="none"
-document.getElementById("adminpageslink").style.display="none"
-if (IDcookie!=null && IDcookie!=0){
-    console.log("logged in")
-    document.getElementById("loginoutbutton").innerHTML='Log Out'
-    sellercookie=getCookie("IsSeller")
-    document.getElementById("reviewForm").style.display = "block"
-    if(sellercookie=="true"){
-        document.getElementById("sellerpageslink").style.display="block"
-    }
-    admincookie=getCookie("IsAdmin")
-    if(admincookie=="true"){
-        document.getElementById("adminpageslink").style.display="block"
-    }
-}else{
-    document.getElementById("myaccountlink").style.display="none"
-}
-
-
-async function logInOut(){
-    IDcookie=getCookie("UserID")
-
-    if (IDcookie==null || IDcookie==0){ // not logged in, go to login page
-
-        location.href="/login.html"
-
-
-    }else{//logged in, logging out
-    try {
-    const response = await fetch("/API/sessions", {
-      method: "DELETE",
-      redirect: "follow"
-    });
-    //if (response.ok){
-        location.href=response.url
-    //} else {
-        //TODO handle errors??
-    //}
-    
-  } catch (e) {
-    console.error(e);
-  }
-}
-}
-function getCookie(name) {
-    const cookieString = document.cookie;
-    if (cookieString) {
-        const cookies = cookieString.split(';');
-        for (let cookie of cookies) {
-        const [cookieName, cookieValue] = cookie.trim().split('=');
-        if (cookieName === name) {
-            return cookieValue;
-        }
-        }
-    }
-    return null;
-}
 
   const form = document.querySelector("#searchform");
   const books = document.getElementById("books");
