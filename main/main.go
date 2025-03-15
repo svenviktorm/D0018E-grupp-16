@@ -967,8 +967,6 @@ func main() {
 	http.HandleFunc("/changeToSeller", changeToSellerHandler)
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
-	http.HandleFunc("/viewBooks", viewBooksHandler)
-
 	//http.HandleFunc("/viewBooks", viewBooksHandler)
 	http.HandleFunc("/get_review", getReviewHandler)
 	http.HandleFunc("/create_review", createReviewHandler)
