@@ -223,9 +223,6 @@ document.getElementById("addBookForm").addEventListener("submit", async function
 });
 
 async function viewBooks() {
-    console.log("cookies:");
-    console.log(document.cookie);
-
     try {
         const response = await fetch("/viewSellerBook", {
             method: "POST",
@@ -237,11 +234,15 @@ async function viewBooks() {
         };
 
         const jsonData = await response.json();
-        console.log(jsonData);
         globalJsonData = jsonData.books
 
+        if (!Array.isArray(jsonData.books) || jsonData.books.length === 0) {
+            document.getElementById("books").innerHTML = ""
+            return
+        }
+
         if (!jsonData.books || !Array.isArray(jsonData.books)) {
-            throw new Error("Invalid data format");
+            throw new Error("Found no books");
         };
 
         const books = document.getElementById("books");

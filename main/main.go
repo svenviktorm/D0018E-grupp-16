@@ -266,7 +266,7 @@ func bookHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		fmt.Println("Book search API called")
-		fmt.Println(r)
+		//fmt.Println(r)
 		searchtype := r.FormValue("type")
 		searchstring := r.FormValue("search")
 		switch searchtype {
@@ -289,7 +289,12 @@ func bookHandler(w http.ResponseWriter, r *http.Request) {
 		if error != nil {
 			fmt.Printf("some error: %v", error)
 		}
-		fmt.Println(books)
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("Books: ", books)
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(books)
 		if err != nil {
@@ -802,45 +807,124 @@ func removeBookHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
-	books, err := viewBooks()
+//func viewBooksHandler(w http.ResponseWriter, r *http.Request) {
+//	fmt.Println("VIEWBOOKSHANDLER CALLED")
+//	books, err := viewBooks()
+//	if err != nil {
+//		fmt.Println("Failed to get books: ", err)
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//		return
+//	}
+
+//	var formattedBooks []map[string]interface{}
+
+//	for _, book := range books {
+//		if !book.Price.Valid {
+//			book.Price = sql.NullInt32{0, true}
+//		}
+//		formattedBooks = append(formattedBooks, map[string]interface{}{
+//			"bookId":      book.BookID,
+//			"title":       book.Title,
+//			"sellerid":    book.SellerID,
+//			"author":      book.Author,
+//			"description": book.Description.String,
+//			"price":       book.Price,
+//			"edition":     book.Edition.String,
+//			"stockAmount": book.StockAmount,
+//			"available":   book.Available,
+//			"isbn":        book.ISBN,
+//			"numrating":   book.NumRatings,
+//			"sumrating":   book.SumRatings,
+//		})
+//	}
+
+//	fmt.Printf("Books: %+v\n", formattedBooks)
+
+//	w.Header().Set("Content-Type", "application/json")
+//	err = json.NewEncoder(w).Encode(map[string]interface{}{
+//		"status": "success",
+//		"books":  formattedBooks,
+//	})
+//	if err != nil {
+//		fmt.Println("Failed to encode response: ", err)
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//	}
+//}
+
+func getReviewHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("getReviewHandler called")
+
+	bookIdstr := r.URL.Query().Get("bookID")
+	bookId, err := strconv.Atoi(bookIdstr)
+	fmt.Println("bookid", bookIdstr)
+
+	reviews, sumRatings, err := getReviews(int32(bookId))
 	if err != nil {
-		fmt.Println("Failed to get books: ", err)
+		fmt.Println("failed to get reviews ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var formattedBooks []map[string]interface{}
-
-	for _, book := range books {
-		if !book.Price.Valid {
-			book.Price = sql.NullInt32{0, true}
+	var formattedReviews []map[string]interface{}
+	i := 0
+	for _, review := range reviews {
+		if !review.Text.Valid {
+			review.Text = sql.NullString{String: "", Valid: false}
 		}
-		formattedBooks = append(formattedBooks, map[string]interface{}{
-			"bookId":      book.BookID,
-			"title":       book.Title,
-			"sellerid":    book.SellerID,
-			"author":      book.Author,
-			"description": book.Description.String,
-			"price":       book.Price,
-			"edition":     book.Edition.String,
-			"stockAmount": book.StockAmount,
-			"available":   book.Available,
-			"isbn":        book.ISBN,
+		formattedReviews = append(formattedReviews, map[string]interface{}{
+			"id":     review.Id,
+			"bookid": review.BookID,
+			"userid": review.UserID,
+			"text":   review.Text.String,
+			"rating": review.Rating,
 		})
+		i++
 	}
 
-	fmt.Printf("Books: %+v\n", formattedBooks)
+	fmt.Printf("Reviews: %+v\n", formattedReviews)
+	fmt.Println("sumrating", sumRatings)
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"books":  formattedBooks,
+		"status":     "success",
+		"reviews":    formattedReviews,
+		"sumRatings": sumRatings,
 	})
 	if err != nil {
 		fmt.Println("Failed to encode response: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func createReviewHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("createReviewHandler called")
+
+	bookID := r.FormValue("bookID")
+	text := r.FormValue("text")
+	rating := r.FormValue("rating")
+
+	bookIDint, err := strconv.Atoi(bookID)
+	if err != nil {
+		fmt.Println("Invalid bookID")
+		http.Error(w, "Invalid bookID", http.StatusBadRequest)
+		return
+	}
+
+	IDcookie, err := r.Cookie("UserID")
+	if err != nil {
+		fmt.Println("Failed to get cookie: ", err)
+		return
+	}
+	userIDstr := IDcookie.Value
+	userIDint, err := strconv.Atoi(userIDstr)
+	ratingint, err := strconv.Atoi(rating)
+
+	err = createReview(int32(userIDint), int32(bookIDint), text, ratingint)
+	if err != nil {
+		fmt.Println("couldnt create review", err)
+		return
+	}
+	fmt.Println("succesfully created review")
 }
 
 // *** Variables ***
@@ -885,6 +969,9 @@ func main() {
 	http.HandleFunc("/remove_book", removeBookHandler)
 	http.HandleFunc("/viewBooks", viewBooksHandler)
 
+	//http.HandleFunc("/viewBooks", viewBooksHandler)
+	http.HandleFunc("/get_review", getReviewHandler)
+	http.HandleFunc("/create_review", createReviewHandler)
 	//http.HandleFunc("POST /", viewHandler)
 	fmt.Println("a!")
 	http.HandleFunc("/root/", rootHandler)

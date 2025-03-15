@@ -36,9 +36,17 @@ type Book struct {
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
 	Available   bool           `json:"available"`   //This will have the value false if not set, not sure if that is what we want or not? Status feels like something that should be set internally rather than directly by the seller(?) so might be no need to have a good automatic default?
 	ISBN        sql.NullInt64  `json:"isbn"`
-	NumRatings  sql.NullInt32
-	SumRatings  sql.NullInt32
-	Price       sql.NullInt32 `json:"price"`
+	NumRatings  sql.NullInt32  `json:"numratings"`
+	SumRatings  sql.NullInt32  `json:"sumratings"`
+	Price       sql.NullInt32  `json:"price"`
+}
+
+type BookReview struct {
+	Id     int32          `json:"id"`
+	BookID int32          `json:"bookid"`
+	UserID int32          `json:"userid"`
+	Text   sql.NullString `json:"text"`
+	Rating int            `json:"rating"`
 }
 
 func hash(plaintext string) int64 {
@@ -317,6 +325,76 @@ func editBook(book Book) (int32, error) {
 	return int32(id), nil
 }
 
+func createReview(userId int32, bookId int32, text string, rating int) error {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM BookReviews WHERE UserID = ? AND BookID = ?", userId, bookId).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to check existing review: %v", err)
+	}
+	if count > 0 {
+		return fmt.Errorf("user has already reviewed this book")
+	}
+
+	var sellerId int32
+	err = db.QueryRow("SELECT SellerID FROM Books WHERE Id = ?", bookId).Scan(&sellerId)
+	if err != nil {
+		return fmt.Errorf("failed to check book seller: %v", err)
+	}
+	if sellerId == userId {
+		return fmt.Errorf("sellers cannot review their own books")
+	}
+
+	_, err = db.Exec("INSERT INTO BookReviews (BookID, UserID, Text, Rating) VALUES (?, ?, ?, ?)", bookId, userId, text, rating)
+	if err != nil {
+		return fmt.Errorf("failed to create review: %v", err)
+	}
+
+	var numRatings int
+	var sumRatings int
+
+	err = db.QueryRow("SELECT COUNT(*), COALESCE(SUM(Rating), 0) FROM BookReviews WHERE BookID = ?", bookId).Scan(&numRatings, &sumRatings)
+	if err != nil {
+		return fmt.Errorf("failed to fetch updated ratings: %v", err)
+	}
+
+	averageRating := sumRatings / numRatings
+
+	_, err = db.Exec("UPDATE Books SET NumRatings = ?, SumRatings = ? WHERE Id = ?", numRatings, averageRating, bookId)
+	if err != nil {
+		return fmt.Errorf("failed to create review: %v", err)
+	}
+
+	return nil
+}
+
+func getReviews(bookId int32) ([]BookReview, int, error) {
+	fmt.Println("getReviews called", bookId)
+
+	var sumRatings int
+	err := db.QueryRow("SELECT SumRatings FROM Books WHERE Id = ?", bookId).Scan(&sumRatings)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get sumRatings: %v", err)
+	}
+
+	rows, err := db.Query("SELECT Id, BookID, UserID, Text, Rating FROM BookReviews WHERE BookID = ?", bookId)
+	if err != nil {
+		return nil, 0, fmt.Errorf("getReview1: %v", err)
+	}
+	defer rows.Close()
+	var reviews []BookReview
+	for rows.Next() {
+		var bookReview BookReview
+		err := rows.Scan(&bookReview.Id, &bookReview.BookID, &bookReview.UserID, &bookReview.Text, &bookReview.Rating)
+		if err != nil {
+			return nil, 0, fmt.Errorf("getBookById2: %v", err)
+		}
+		reviews = append(reviews, bookReview)
+		fmt.Println("bookreview: ", bookReview)
+	}
+
+	return reviews, sumRatings, nil
+}
+
 /*
 
 func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
@@ -349,6 +427,16 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 */
 
 func removeBook(available bool, bookId int32) error {
+	var exists bool
+
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM Books WHERE Id = ?)", bookId).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("error checking book existence: %v", err)
+	}
+
+	if !exists {
+		return fmt.Errorf("book with ID %d does not exist", bookId)
+	}
 	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
 	return nil
 }
@@ -448,28 +536,27 @@ func GetSellerBooks(sellerID int32) ([]Book, error) {
 	return books, nil
 }
 
-// I think this isn't used anymore? yes still used
-func viewBooks() ([]Book, error) {
+// I think this isn't used anymore?
+//func viewBooks() ([]Book, error) {
 
-	var books []Book
+//	var books []Book
 
-	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+//	rows, err := db.Query("SELECT Id, Title, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books")
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer rows.Close()
 
-	for rows.Next() {
-		var book Book
-		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
-		if err != nil {
-			return nil, err
-		}
-		books = append(books, book)
-	}
-
-	return books, nil
-}
+//	for rows.Next() {
+//		var book Book
+//		err := rows.Scan(&book.BookID, &book.Title, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
+//		if err != nil {
+//			return nil, err
+//		}
+//		books = append(books, book)
+//	}
+//	return books, nil
+//}
 
 func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32, err error) {
 	user, successLogin, err := LogInCheckNotHashed(user.Username, user.Password)
