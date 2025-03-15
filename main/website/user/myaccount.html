@@ -140,17 +140,23 @@ document.getElementById("sellerButton").addEventListener("click", function() {
         //const form = document.getElementById("becomeSellerForm")
         const form = document.querySelector("#becomeSellerForm");
         const formData = new FormData(form)
+
         userID=getCookie("UserID")
         formData.append("SellerID",userID)
         /*
+
         const searchParams = new URLSearchParams(formData)
         sends = "IsSeller=true" + searchParams
         console.log(formData)
         console.log("serachParams: ", searchParams.toString())
+
         */
+
+
         try {
             const response = await fetch("/API/sellers", {
                     method: "POST",
+
                     body: formData,
                 });
             if (response.ok){
@@ -163,7 +169,8 @@ document.getElementById("sellerButton").addEventListener("click", function() {
                 sessionend=parseInt(getCookie("SessionEnd"))
                 maxage=Math.floor((sessionend-Date.now())/1000)
                 document.cookie="IsSeller=true;Path=/;Max-Age="+maxage
-                //location.reload()
+                location.reload()
+
                 
             } else {
                 console.log("error changing to seller1")

@@ -28,14 +28,16 @@
            onclick="logInOut()">Log In/Create account</a>
   </div>
   <script>
-  IDcookie=getCookie("UserID")
-  console.log(IDcookie)
-  document.getElementById("sellerpageslink").style.display="none"
-  document.getElementById("adminpageslink").style.display="none"
-  if (IDcookie!=null && IDcookie!=0){
-    console.log("logged in")
+
+IDcookie=getCookie("UserID")
+console.log(IDcookie)
+document.getElementById("sellerpageslink").style.display="none"
+document.getElementById("adminpageslink").style.display="none"
+if (IDcookie!=null && IDcookie!=0){
+console.log("logged in")
     document.getElementById("loginoutbutton").innerHTML='Log Out'
     sellercookie=getCookie("IsSeller")
+    document.getElementById("reviewForm").style.display = "block"
     if(sellercookie=="true"){
         document.getElementById("sellerpageslink").style.display="block"
     }
@@ -85,11 +87,9 @@
         }
     }
     return null;
-  }
+      }
   </script>
-
-
-<div class="flex-container">
+  <div class="flex-container">
     <form id="searchform">
         <input id="search" name="search" type="text" placeholder=" Search book">
         <select id="searchtype" name="type">
@@ -102,7 +102,8 @@
 
     </form>
 </div>
- <!--<input type="text" id="inputField" placeholder="Enter text here">
+ 
+  <!--<input type="text" id="inputField" placeholder="Enter text here">
     <button onclick="sendText()">Send</button>-->
 
 <div class="flex-container"> 
@@ -120,34 +121,49 @@
 
 </div> 
 
-<div id="detailedCard" class="detailed-card" style="display:none;">
+  <div id="detailedCard" class="detailed-card" style="display:none;">
     <h3 id="detailedBookTitle"></h3>
     <p><b>Author:</b> <span id="detailedBookAuthor"></span></p>
     <p><b>Description:</b> <span id="detailedBookDescription"></span></p>
-    <p><b>Price:</b> <span id="detailedBookPrice"></span></p>
+    <p><b>Price:</b> <span id="detailedBookPrice"></span> kr</p>
     <p><b>Edition:</b> <span id="detailedBookEdition"></span></p>
     <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
     <!--<p><b>Available:</b> <span id="detailedBookAvailable"></span></p>-->
     <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
     <button onclick="addToCart()">Add to cart</button>
-    <input type="number" name="count" id="count">
+    <input type="number" name="count" id="count"><br><br>
+    <h3><b>Reviews</b></h3>
+    <p id="sumRatings">Rating</p>
+    <form id="reviewForm" style="display: none;">
+        <p>Leave a review</p>
+        <input type="number" id="reviewRating" name="revewRating" placeholder="Rating" pattern="[0-5]{1}" style="width: 70px;">
+        <input type="text" id="reviewText" name="revewText" placeholder="Text" style="width: 50px;">
+        <button type="submit" onclick="submitReview()">Submit review</button>
+    </form>
+    <div id="reviews"></div>
     <button onclick="closeDetails()">Close</button>
     
 </div>
 
 
+
 </div>
 
-<div class="row">
+<!--<div class="row">
     <div id="books"></div>
-</div>
+</div>-->
 
 
 <div class="row">
     <div id="detailedBooksCard"></div>
 </div>
 
+
+    
+
+
 <script>
+
 
   const form = document.querySelector("#searchform");
   const books = document.getElementById("books");
@@ -252,18 +268,18 @@ function renderBooks(bookList, sectionTitle) {
                     }
 
                     const col = document.createElement('div')
-                    col.classList.add('col-md-4')
+                    col.classList.add('uniqueBookClass')
 
                     const templateBook = `
                         <div class="card" id="book-${book.bookId}" data-bookid="${book.bookId}">
                             <div class="container">
                                 <h4><b>${book.title}</b></h4>
                                 <p>Author: ${book.author ?? "Unknown"}</p>
-                                <p>Price: ${book.price.Int32 ?? "Unknown"}</p>
+                                <p>Price: ${book.price.Int32 ?? "Unknown"} kr</p>
                                 <p>Edition: ${book.edition.String || "Unknown"}</p>
                                 <p>Stock: ${book.stockAmount}</p>
                                 <!--<p>Available: ${book.available ? "Yes" : "No"}</p>-->
-                                <p>ISBN: ${book.isbn.Int32 ?? "Unknown"}</p>
+                                <p>ISBN: ${book.isbn.Int64 ?? "Unknown"}</p>
                             </div>
                         </div>
                     `
@@ -291,9 +307,11 @@ function showBookDetails(book) {
     document.getElementById("detailedBookEdition").textContent = book.edition.String || "No edition";
     document.getElementById("detailedBookStock").textContent = book.stockAmount;
     //document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
-    document.getElementById("detailedBookISBN").textContent = book.isbn.Int32 ?? "Unknown ISBN";
+    document.getElementById("detailedBookISBN").textContent = book.isbn.Int64 ?? "Unknown ISBN";
 
     detailedBook.style.display = "block";
+
+    fetchReviews(book.bookId);
 
     /*
     document.getElementById("editBookButton").addEventListener('click', function() {
@@ -330,19 +348,13 @@ async function addToCart() {
 
         if (response.ok) {
             console.log("Book added to cart successfully!");
-            // Optionally, provide feedback to the user (e.g., a message).
         } else {
             console.error("Failed to add book to cart.");
-            // Handle errors (e.g., show an error message).
         }
     } catch (error) {
         console.error("Error adding to cart:", error);
-        // Handle network errors or other exceptions.
     }
-
 }
-
-
 
 function searchBook() {
     console.log("searchbook clicked")
@@ -353,7 +365,7 @@ console.log(searchParams)
             fetch("/API/books?"+searchParams, {
                 method: "GET",
             })
-            .then(response => response.json()) // Parse JSON response
+            .then(response => response.json())
             .then(booklist => {
                 globalJsonData=booklist
                renderBooks(booklist,"Search results")
@@ -382,9 +394,75 @@ console.log(searchParams)
             .catch(error => console.error("Error:", error));
         }
 
+async function submitReview() {
+    let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
+    let reviewText = document.getElementById("reviewText").value
+    let reviewRating = document.getElementById("reviewRating").value
 
+    try {
+        const formData = new URLSearchParams()
+        formData.append("bookID", bookId)
+        formData.append("text", reviewText)
+        formData.append("rating", reviewRating)
 
+        const response = await fetch("/create_review", {
+            method: "POST",
+            body: formData,
+        })
 
+        const responseData = await response.json()
+
+        if (response.ok) {
+            console.log("review submitted successfully")
+            alert("Review submitted successfully")
+
+            document.getElementById("reviewForm").reset()
+        } else {
+            console.error("failed to submit review", responseData.message)
+            alert("Failed to submit review. Please try again", responseData.message)
+        }
+    } catch (error) {
+        console.error("error submitting review", error)
+        alert("An error occurred while submitting the review")
+    }
+ }
+
+async function fetchReviews(bookId) {
+    try {
+        const response = await fetch(`/get_review?bookID=${bookId}`)
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`)
+        }
+
+        const data = await response.json()
+        console.log("reviews", data.reviews)
+        console.log("sumRatings", data.sumRatings)
+
+        const reviews= document.getElementById("reviews")
+        const sumRatingElement = document.getElementById("sumRatings")
+        sumRatingElement.innerHTML = `<p><strong>Average rating:</strong> ${data.sumRatings}/5</p><hr>`
+        reviews.innerHTML = ""
+
+        if (data.reviews.length === 0) {
+            reviews.innerHTML = "<p>No reviews yet</p>"
+            return;
+        }
+
+        data.reviews.forEach(review => {
+            const reviewElement = document.createElement("div")
+            reviewElement.classList.add("review")
+            reviewElement.innerHTML = 
+                `<p><strong>Rating:</strong> ${review.rating}/5</p>
+                <p><strong>Review:</strong> ${review.text ? review.text : "No review text"}</p>
+                <hr>`
+            reviews.appendChild(reviewElement)
+        })
+
+    } catch (error) {
+        console.error("error fetching reviews", error)
+        reviews.innerHTML = "<p>No reviews yet</p>"
+    }
+}
 </script>
 
 </body>
