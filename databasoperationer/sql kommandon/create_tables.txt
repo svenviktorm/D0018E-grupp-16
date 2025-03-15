@@ -63,7 +63,7 @@ CREATE TABLE Orders(
     TimePaymentReceived TIMESTAMP,
     PaymentReceived BOOL NOT NULL DEFAULT FALSE,
     PaymentMethod ENUM('invoice', 'card') NOT NULL,
-    Status ENUM('reserved', 'confirmed', 'payed', 'sent', 'canceled', 'returned') NOT NULL,
+    Status ENUM('reserved', 'confirmed', 'sent', 'canceled', 'returned') NOT NULL,
     DeliveryAddress VARCHAR(250),
     BillingAddress VARCHAR(250),
     PRIMARY KEY (ID),
