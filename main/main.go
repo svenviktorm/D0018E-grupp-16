@@ -312,11 +312,12 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 */
 func bookHandler(w http.ResponseWriter, r *http.Request) {
-	var books []Book
-	var error error
+
 	switch r.Method {
 	case http.MethodGet:
 		fmt.Println("Book search API called")
+		var books []Book
+		var error error
 		//fmt.Println(r)
 		searchtype := r.FormValue("type")
 		searchstring := r.FormValue("search")
@@ -333,7 +334,6 @@ func bookHandler(w http.ResponseWriter, r *http.Request) {
 				//TODO actuall error handling
 			}
 			books, error = SearchBooksByISBN(isbn, true)
-
 		default:
 			fmt.Println("Unimplemented search type")
 		}
@@ -684,6 +684,53 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func reviewHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodDelete:
+		fmt.Println("Delete request to review API. This should be a request to delete a review")
+		ToBeDeletedID, err := getIDFromFormvalue(r, "ReviewID")
+		if err != nil {
+			fmt.Printf("Error when getting ID for the review to be deleted: %v", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		fmt.Println("ID for review to delete:", ToBeDeletedID)
+		AuthUser, err := getUserFromCookies(r)
+		if err != nil {
+			fmt.Printf("Error when getting authorizing user from cookies: %v", err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		fmt.Printf("Authorizing ID:%v, password:%v", AuthUser.UserID, AuthUser.Password)
+		err = deleteReview(ToBeDeletedID, AuthUser.UserID, AuthUser.Password)
+		if err != nil {
+			myerr, ok := err.(MyError)
+			if !ok {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			} else {
+				switch myerr.errorType {
+				case errorTypeAuthorizationNotFound:
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+				case errorTypeAuthorizationUnauthorized:
+					http.Error(w, err.Error(), http.StatusForbidden)
+				case errorTypeBadRequest:
+					http.Error(w, err.Error(), http.StatusBadRequest)
+				case errorTypeDatabase:
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				case errorTypeUserNotFound:
+					http.Error(w, err.Error(), http.StatusNotFound)
+				case errorTypeConflict:
+					http.Error(w, err.Error(), http.StatusConflict)
+				default:
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
+		}
+	default:
+		fmt.Println("Unsupported request type to review API")
+	}
+}
+
 func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("changeEmailHandler called")
 	switch r.Method {
@@ -752,19 +799,21 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			sellerId := IDcookie.Value
 			fmt.Println("sellerid", sellerId)
 		*/
-		IDcookie, err := r.Cookie("UserID")
-		if err != nil {
-			fmt.Println("error getting userID from cookie")
-			http.Error(w, "User not authenticated", http.StatusUnauthorized)
-			return
-		}
-		authUserID, err := strconv.Atoi(IDcookie.Value)
-		fmt.Println(authUserID)
-		if err != nil {
-			fmt.Println("error converting userID to int")
-			http.Error(w, "Invalid UserID", http.StatusBadRequest)
-			return
-		}
+		/*
+			IDcookie, err := r.Cookie("UserID")
+			if err != nil {
+				fmt.Println("error getting userID from cookie")
+				http.Error(w, "User not authenticated", http.StatusUnauthorized)
+				return
+			}
+			authUserID, err := strconv.Atoi(IDcookie.Value)
+			fmt.Println(authUserID)
+			if err != nil {
+				fmt.Println("error converting userID to int")
+				http.Error(w, "Invalid UserID", http.StatusBadRequest)
+				return
+			}
+		*/
 
 		/*
 			passwordCookie, err := r.Cookie("Password")
@@ -810,20 +859,28 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 		sellerName := r.FormValue("name")
 		description := r.FormValue("description")
 
-		toBeSellerIDs := r.FormValue("SellerID")
-		if toBeSellerIDs == "" {
-			fmt.Println("Seller ID missing from request form")
-			http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
-			return
-		}
-		toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
+		toBeSellerID, err := getIDFromFormvalue(r, "SellerID")
 		if err != nil {
-			fmt.Println("Invalid userID")
-			http.Error(w, "Invalid SellerID", http.StatusBadRequest)
+			fmt.Printf("Error when getting future seller ID: %v", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		/*
+			toBeSellerIDs := r.FormValue("SellerID")
+			if toBeSellerIDs == "" {
+				fmt.Println("Seller ID missing from request form")
+				http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
+				return
+			}
+			toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
+			if err != nil {
+				fmt.Println("Invalid userID")
+				http.Error(w, "Invalid SellerID", http.StatusBadRequest)
+				return
+			}
+		*/
 
-		changedSeller, err := UpgradeToSeller(int32(toBeSellerIDint), int32(authUserID), user.Password, sellerName, sql.NullString{description, true})
+		changedSeller, err := UpgradeToSeller(toBeSellerID, user.UserID, user.Password, sellerName, sql.NullString{description, true})
 		if err != nil {
 			fmt.Println("error changing to seller:", err)
 			switch changedSeller {
@@ -889,7 +946,7 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 		description := r.FormValue("description")
 		toBeSellerID, err := getIDFromFormvalue(r, "SellerID")
 		if err != nil {
-			fmt.Printf("Error when getting future seller ID: %v", err)
+			fmt.Printf("Error when getting seller ID: %v", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -1027,10 +1084,31 @@ func removeBookHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	err = removeBook(data.Available, data.BookId)
+	AuthorizingUser, err := getUserFromCookies(r)
 	if err != nil {
-		http.Error(w, "Error updating book availability", http.StatusInternalServerError)
+		fmt.Println("error getting userID and password from cookie")
+		http.Error(w, "User not authenticated", http.StatusUnauthorized)
 		return
+	}
+	err = removeBook(data.Available, data.BookId, AuthorizingUser.UserID, AuthorizingUser.Password)
+	if err != nil {
+		myerr, ok := err.(MyError)
+		if !ok {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			switch myerr.errorType {
+			case errorTypeAuthorizationNotFound:
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+			case errorTypeAuthorizationUnauthorized:
+				http.Error(w, err.Error(), http.StatusForbidden)
+			case errorTypeBadRequest:
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			case errorTypeDatabase:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			default:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -1087,7 +1165,7 @@ func getReviewHandler(w http.ResponseWriter, r *http.Request) {
 	bookId, err := strconv.Atoi(bookIdstr)
 	fmt.Println("bookid", bookIdstr)
 
-	reviews, sumRatings, err := getReviews(int32(bookId))
+	reviews, avRating, err := getReviews(int32(bookId))
 	if err != nil {
 		fmt.Println("failed to get reviews ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1111,13 +1189,13 @@ func getReviewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Printf("Reviews: %+v\n", formattedReviews)
-	fmt.Println("sumrating", sumRatings)
+	fmt.Println("avrating", avRating)
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":     "success",
-		"reviews":    formattedReviews,
-		"sumRatings": sumRatings,
+		"status":  "success",
+		"reviews": formattedReviews,
+		//"avRating": avRating,
 	})
 	if err != nil {
 		fmt.Println("Failed to encode response: ", err)
@@ -1154,6 +1232,8 @@ func createReviewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("succesfully created review")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message":""}`))
 }
 
 // *** Variables ***
@@ -1194,6 +1274,7 @@ func main() {
 	http.HandleFunc("/viewSellerBook", viewBooksBySellerHandler)
 	http.HandleFunc("/email", changeEmailHandler)
 	http.HandleFunc("/API/sellers", sellerHandler)
+	http.HandleFunc("/API/reviews", reviewHandler)
 	http.HandleFunc("/edit_book", editBookHandler)
 	http.HandleFunc("/remove_book", removeBookHandler)
 	//http.HandleFunc("/viewBooks", viewBooksHandler)

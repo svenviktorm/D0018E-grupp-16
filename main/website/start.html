@@ -74,15 +74,23 @@
     <!--<p><b>Available:</b> <span id="detailedBookAvailable"></span></p>-->
     <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
     <button onclick="addToCart()">Add to cart</button>
-    <input type="number" name="count" id="count"><br><br>
+    <input type="number" name="count" id="count" value="1"><br><br>
+    <hr>
+    <button id="editBookButton">Edit</button>
+    <button id="removeBookButton" onclick="removeBook()">Remove book</button>
+    <hr>
     <h3><b>Reviews</b></h3>
+    <hr>
     <p id="sumRatings">Rating</p>
+    
     <form id="reviewForm" style="display: none;">
         <p>Leave a review</p>
         <input type="number" id="reviewRating" name="revewRating" placeholder="Rating" pattern="[0-5]{1}" style="width: 70px;">
         <input type="text" id="reviewText" name="revewText" placeholder="Text" style="width: 50px;">
-        <button type="submit" onclick="submitReview()">Submit review</button>
+        <button type="submit" id="submitReviewButton" >Submit review</button>
     </form>
+    <hr>
+    
     <div id="reviews"></div>
     <button onclick="closeDetails()">Close</button>
     
@@ -101,11 +109,35 @@
     <div id="detailedBooksCard"></div>
 </div>
 
+<div class="flex-container">
+    <div id="edit" style="display: none;">
+        <card>
+            <div class="flex-container">
+                <form id="editBookForm">   
+                    <h3><b>Edit book</b></h3>
+                    <input name="title" type="text" placeholder="Title" id="titleedit"><br>
+                    <textarea name="description" placeholder="Description" id="descriptionedit" rows="1" style="resize: none; overflow: hidden;"></textarea><br>
+                    <input name="price" type="number" placeholder="Price" id="priceedit"><br>
+                    <input name="edition" type="text" placeholder="Edition" id="editionedit"><br>
+                    <input name="stockAmount" type="number" placeholder="Stock" id="stockAmountedit"><br>
+                    <input name="isbn" type="number" placeholder="ISBN" id="isbnedit"><br>
+                    <button type="button" onclick="exitEdit()">Back</button>
+                    <input type="submit" value="Submit">
+                </form>
+            </div>
+        </card>
+    </div>
+</div>
 
     
 
 
 <script>
+  const form = document.querySelector("#searchform");
+  const books = document.getElementById("books");
+  const reviewbutton = document.getElementById("submitReviewButton");
+
+
 IDcookie=getCookie("UserID")
 console.log(IDcookie)
 document.getElementById("sellerpageslink").style.display="none"
@@ -167,15 +199,19 @@ console.log("logged in")
       }
 
 
-  const form = document.querySelector("#searchform");
-  const books = document.getElementById("books");
+
 
 form.addEventListener("submit", (event) => {
   console.log("submit called")
   event.preventDefault();
   searchBook();
 });
-  
+
+
+reviewbutton.addEventListener('click',(event)=> {
+    event.preventDefault();
+    submitReview();
+})
 books.addEventListener("click", (event) => {
         const card = event.target.closest(".card");
         if (card) {
@@ -308,18 +344,40 @@ function showBookDetails(book) {
     document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
     document.getElementById("detailedBookEdition").textContent = book.edition.String || "No edition";
     document.getElementById("detailedBookStock").textContent = book.stockAmount;
+    document.getElementById("detailedBookISBN").textContent = book.isbn.Int64;
     //document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
-    document.getElementById("detailedBookISBN").textContent = book.isbn.Int64 ?? "Unknown ISBN";
+    console.log("numratings and sumratings")
+    console.log(book.sumratings)
+    console.log(book.numratings)
+    if (book.numratings.Valid && book.sumratings.Valid && book.numratings.Int32>0){
+        console.log("Can compute average rating")
+         avRating=book.sumratings.Int32/book.numratings.Int32
+         console.log(avRating)
+         document.getElementById("sumRatings").innerHTML = `<p><strong>Average rating:</strong> ${avRating}/5</p><hr>`
+    }else{
+        document.getElementById("sumRatings").innerHTML = `<p><strong>Average rating:</strong> No ratings yet</p><hr>`
+    }
 
     detailedBook.style.display = "block";
 
     fetchReviews(book.bookId);
 
-    /*
-    document.getElementById("editBookButton").addEventListener('click', function() {
+    admincookie=getCookie("IsAdmin")
+    IDcookie=getCookie("UserID")
+    //console.log("IDcookie:"+IDcookie+"book.sellerId"+book.sellerId)
+    const editBookButton=document.getElementById("editBookButton")
+    const removeBookButton=document.getElementById("removeBookButton")
+    if((admincookie=="true")||(IDcookie!=null && IDcookie && IDcookie==book.sellerId)){
+    
+    editBookButton.addEventListener('click', function() {
         editBook(book);
-    });
-    */
+    });}else{
+        editBookButton.style.display="none"
+        removeBookButton.style.display="none"
+
+    }
+    
+    
 }
 
 function closeDetails() {
@@ -350,6 +408,7 @@ async function addToCart() {
 
         if (response.ok) {
             console.log("Book added to cart successfully!");
+            alert("Book added to cart successfully!")
         } else {
             console.error("Failed to add book to cart.");
         }
@@ -398,6 +457,7 @@ console.log(searchParams)
         }
 
 async function submitReview() {
+    console.log("in submitReview")
     let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
     let reviewText = document.getElementById("reviewText").value
     let reviewRating = document.getElementById("reviewRating").value
@@ -420,6 +480,24 @@ async function submitReview() {
             alert("Review submitted successfully")
 
             document.getElementById("reviewForm").reset()
+            let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
+    
+        bookId = parseInt(bookId, 10)
+        closeDetails()
+        searchBook()
+        /*
+        console.log(globalJsonData)
+            const book = globalJsonData.find(b => {
+                console.log("Comparing with bookId:", b.bookId);
+                return parseInt(b.bookId, 10) === bookId;
+            });
+
+            
+            if (book) {
+                console.log("Found book:", book);
+                showBookDetails(book);
+            }
+                */
         } else {
             console.error("failed to submit review", responseData.message)
             alert("Failed to submit review. Please try again", responseData.message)
@@ -439,25 +517,39 @@ async function fetchReviews(bookId) {
 
         const data = await response.json()
         console.log("reviews", data.reviews)
-        console.log("sumRatings", data.sumRatings)
+        //console.log("sumRatings", data.sumRatings)
 
         const reviews= document.getElementById("reviews")
-        const sumRatingElement = document.getElementById("sumRatings")
-        sumRatingElement.innerHTML = `<p><strong>Average rating:</strong> ${data.sumRatings}/5</p><hr>`
+        //const sumRatingElement = document.getElementById("sumRatings")
+        //sumRatingElement.innerHTML = `<p><strong>Average rating:</strong> ${data.avRating}/5</p><hr>`
         reviews.innerHTML = ""
 
         if (data.reviews.length === 0) {
             reviews.innerHTML = "<p>No reviews yet</p>"
             return;
         }
-
+        const isadmin=getCookie("IsAdmin")=="true"
+        const userid=getCookie("UserID")
+        console.log("IsAdmin?:")
+        console.log(isadmin)
+        console.log(userid)
         data.reviews.forEach(review => {
             const reviewElement = document.createElement("div")
             reviewElement.classList.add("review")
+            console.log(review.userid)
+            
+            if (isadmin || userid==review.userid ){
             reviewElement.innerHTML = 
                 `<p><strong>Rating:</strong> ${review.rating}/5</p>
                 <p><strong>Review:</strong> ${review.text ? review.text : "No review text"}</p>
+                <button type="button" onclick=deleteReview(${review.id})>Delete review</button>
+                <hr>`}
+            else{
+                reviewElement.innerHTML = 
+                `<p><strong>Rating:</strong> ${review.rating}/5</p>
+                <p><strong>Review:</strong> ${review.text ? review.text : "No review text"}</p>
                 <hr>`
+            }
             reviews.appendChild(reviewElement)
         })
 
@@ -466,8 +558,208 @@ async function fetchReviews(bookId) {
         reviews.innerHTML = "<p>No reviews yet</p>"
     }
 }
+
+let editFormSubmitHandler
+
+function editBook(book) {
+    console.log("edit called", book)
+
+    const editdiv = document.getElementById("edit")
+    const editform = document.getElementById("editBookForm")
+
+    closeDetails()
+    editdiv.style.display = "block"
+    console.log(book.isbn.Int32)
+
+    document.getElementById("titleedit").value = book.title
+    document.getElementById("descriptionedit").value = book.description.String
+    document.getElementById("priceedit").value = book.price.Int32
+    document.getElementById("editionedit").value = book.edition.String
+    document.getElementById("stockAmountedit").value = book.stockAmount
+    document.getElementById("isbnedit").value = book.isbn.Int64
+
+    const bookId = book.bookId
+
+    if (editFormSubmitHandler) {
+        document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
+    }
+
+    if (editFormSubmitHandler) {
+        document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
+    }
+
+    editFormSubmitHandler = async function(event) {
+        event.preventDefault();
+
+        const bookToEdit = globalJsonData.find(b => b.bookId === bookId);
+
+        if (!bookToEdit) {
+            console.error("Book not found for bookId:", bookId);
+            alert("Error: Book not found.");
+            return;
+        }
+
+        const updatedBook = {
+            bookId: bookToEdit.bookId,
+            title: document.getElementById("titleedit").value,
+            description: {
+                String: document.getElementById("descriptionedit").value.trim(),
+                Valid: document.getElementById("descriptionedit").value.trim() !== ""
+            },
+            price: {
+                Int32: parseInt(document.getElementById("priceedit").value, 10),
+                Valid: document.getElementById("priceedit").value.trim() !== ""
+            },
+            edition: {
+                String: document.getElementById("editionedit").value.trim(),
+                Valid: document.getElementById("editionedit").value.trim() !== ""
+            },
+            stockAmount: parseInt(document.getElementById("stockAmountedit").value, 10),
+            isbn: {
+                Int64: parseInt(document.getElementById("isbnedit").value, 10),
+                Valid: document.getElementById("isbnedit").value.trim() !== ""
+            },
+            available: bookToEdit.available
+        };
+
+        try {
+            const response = await fetch("/edit_book", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedBook)
+            });
+            console.log("book:", updatedBook);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("HTTP error:", response.status, errorText);
+                alert("Error editing book. HTTP error: " + response.status);
+                editdiv.style.display = "none";
+                return;
+            }
+
+            const data = await response.json();
+            console.log(data);
+            alert("Book edited successfully");
+            searchBook()
+            editdiv.style.display = "none";
+        } catch (error) {
+            console.error("Error editing book", error);
+            alert("Error editing book");
+            editdiv.style.display = "none";
+        }
+    };
+
+    document.getElementById("editBookForm").addEventListener("submit", editFormSubmitHandler);
+}
+
+function exitEdit(){
+    console.log("In exitEdit")
+    const editdiv = document.getElementById("edit")
+    editdiv.style.display = "none";
+}
+
+async function removeBook() {
+    console.log("remove book caled")
+
+    let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
+    
+    bookId = parseInt(bookId, 10)
+    console.log("bookId: ", bookId)
+
+    if (!bookId) {
+        alert("No book selected for removal");
+        return;
+    }
+
+    const confirmed = confirm("Are you sure you want to make this book unavailable?")
+    if (!confirmed) {
+        return
+    }
+
+    try {
+        const response = await fetch("/remove_book", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({available: false, bookId: bookId})
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
+
+        /*
+        const bookElement = document.getElementById(`book-${bookId}`)
+        if (bookElement) {
+            const availableText = bookElement.querySelector('p:last-child')
+            if (availableText) {
+                availableText.textContent = "Available: No"
+            }
+        }
+            */
+        searchBook()
+        closeDetails()
+
+        alert("Book marked as unavailable")
+
+    } catch (error) {
+        console.error("Error marking book as unavailable:", error)
+        alert("Error marking book as unavailable")
+    }
+}
+
+async function deleteReview(reviewID){
+    console.log("In delete review")
+    console.log("ReviewID is:")
+    console.log(reviewID)
+    const searchParams= new URLSearchParams()
+    searchParams.append("ReviewID",reviewID)
+    try {
+        const response = await fetch("/API/reviews?"+searchParams, {
+            method: "DELETE",
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
+
+
+        alert("Review deleted")
+        let bookId = document.getElementById("detailedCard").getAttribute("data-bookid")
+    
+        bookId = parseInt(bookId, 10)
+        closeDetails()
+        searchBook()/*
+            const book = globalJsonData.find(b => {
+                console.log("Comparing with bookId:", b.bookId);
+                return parseInt(b.bookId, 10) === bookId;
+            });
+
+            
+            if (book) {
+                console.log("Found book:", book);
+                showBookDetails(book);
+            }
+        */
+
+    } catch (error) {
+        console.error("Error deliting review:", error)
+        alert("Failed to delete review")
+    }
+    
+
+}
+/*
+async function editReview(reviewID){
+    console.log("In edit review")
+    console.log("ReviewID is:")
+    console.log(reviewID)
+}
+*/
 </script>
 
 </body>
 </html
-

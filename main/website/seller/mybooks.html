@@ -383,7 +383,7 @@ function editBook(book) {
     document.getElementById("priceedit").value = book.price.Int32
     document.getElementById("editionedit").value = book.edition
     document.getElementById("stockAmountedit").value = book.stockAmount
-    document.getElementById("isbnedit").value = book.isbn.Int32
+    document.getElementById("isbnedit").value = book.isbn.Int64
 
     const bookId = book.bookId
 
@@ -397,7 +397,7 @@ function editBook(book) {
 
     editFormSubmitHandler = async function(event) {
         event.preventDefault();
-
+        console.log("in editFormSubmitHandler")
         const bookToEdit = globalJsonData.find(b => b.bookId === bookId);
 
         if (!bookToEdit) {
@@ -423,7 +423,7 @@ function editBook(book) {
             },
             stockAmount: parseInt(document.getElementById("stockAmountedit").value, 10),
             isbn: {
-                Int32: parseInt(document.getElementById("isbnedit").value, 10),
+                Int64: parseInt(document.getElementById("isbnedit").value, 10),
                 Valid: document.getElementById("isbnedit").value.trim() !== ""
             },
             available: bookToEdit.available
@@ -460,6 +460,7 @@ function editBook(book) {
 }
 
 function exitEdit(){
+    console.log("in exitEdit")
     const editdiv = document.getElementById("edit")
     editdiv.style.display = "none";
 }
