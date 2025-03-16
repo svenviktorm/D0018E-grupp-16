@@ -58,9 +58,9 @@ async function sendLogin() {
         const user=await response.json()
         console.log(user)
         document.cookie="UserID="+user.UserID+";Path=/;Max-Age=7200"
-        document.cookie="Username="+user.Username+";Path=/;Max-Age=7200"
+        document.cookie="Username="+user.Username.String+";Path=/;Max-Age=7200"
         document.cookie="Password="+user.Password+";Path=/;Max-Age=7200"
-        //document.cookie="Email="+user.Email.String+";Path=/;Max-Age=7200"
+        document.cookie="Email="+user.Email.String+";Path=/;Max-Age=7200"
         document.cookie="IsSeller="+user.IsSeller+";Path=/;Max-Age=7200"
         document.cookie="IsAdmin="+user.IsAdmin+";Path=/;Max-Age=7200"
         sessionEndtime=Date.now()+7200000
