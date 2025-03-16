@@ -16,6 +16,8 @@
     <a   href="/start.html">Book Store</a>
     <a  class="active" id="myaccountlink" href="/user/myaccount.html">My Account</a>
     <a id="shoppingcartlink" href="../shoppingcart.html">Shopping Cart</a>
+    <a id="ordersU" href="/user/ordersU.html">Orders</a>
+    <a id="ordersS" href="/user/ordersS.html">Seller Orders</a>
     <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
     <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
     <a id="loginoutbutton" href="javascript:void(0);"
@@ -32,6 +34,8 @@
     sellercookie=getCookie("IsSeller")
     if(sellercookie=="true"){
         document.getElementById("sellerpageslink").style.display="block"
+    } else {
+        document.getElementById("ordersS").style.display="none"
     }
     admincookie=getCookie("IsAdmin")
     if(admincookie=="true"){
@@ -82,8 +86,9 @@
   }
   </script>
 
-
-
+<b id = "username"> </b>
+<br>
+<b id = "email"> </b>
 <div class="row">
     <div class="column">
       <div class="card" id="userInfoCard">
@@ -133,7 +138,6 @@ if (getCookie("IsSeller") == "true") {
 } else {
     document.getElementById("sellerButton").style.visibility = "visible";
     document.getElementById("becomeSellerForm").style.display = "block";
-    document.getElementById("sellerOrder").style.display = "none";
     
 } 
 const formSeller = document.getElementById("becomeSellerForm")
@@ -168,6 +172,7 @@ document.getElementById("sellerButton").addEventListener("click", function() {
 
 
         try {
+            console.log("trying to change to seller")
             const response = await fetch("/API/sellers", {
                     method: "POST",
 
@@ -188,10 +193,12 @@ document.getElementById("sellerButton").addEventListener("click", function() {
 
                 
             } else {
+                alert("error changing to seller1")
                 console.log("error changing to seller1")
             }
         } catch (error) {
             console.error(error);
+            alert(error)
             console.log("error changing to seller2")
         }
     } else {

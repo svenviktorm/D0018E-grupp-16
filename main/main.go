@@ -604,18 +604,77 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 func orderHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("orderHandler called")
 	switch r.Method {
-	case http.MethodGet:
+	case http.MethodPut:
 		fmt.Println("Get request to order API")
-		fmt.Println("This should be an attempt to view the shopping cart")
 		user, err := getUserFromCookies(r)
 		if err != nil {
 			fmt.Println("Failed to get user: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		fmt.Println("User: ", user)
-	case http.MethodPut:
+		orders := []Order{}
 		switch r.FormValue("requestType") {
+		case "sellerGET":
+			fmt.Println("This should be an attempt to view the orders on seller side")
+			orders, err = getOrdersBySeller(user.UserID, user.UserID, user.Password, "all")
+			if err != nil {
+				fmt.Println("Failed to get ordersSeller: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			err = json.NewEncoder(w).Encode(orders)
+			if err != nil {
+				fmt.Println("Failed to encode response: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		case "buyerGET":
+			fmt.Println("This should be an attempt to view the orders on buyer side")
+			orders, err = getOrdersByBuyer(user.UserID, user.UserID, user.Password)
+			if err != nil {
+				fmt.Println("Failed to get ordersUser: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			var formattedOrders []map[string]interface{}
+			for _, order := range orders {
+				sellerName := "kalle"
+				books, prices, quantity, err := getBooksAndPriceFromOrder(order.OrderID)
+				if err != nil {
+					fmt.Println("Failed to get books and prices: ", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				var formattedBooks []map[string]interface{}
+				var totalPrice int32 = 0
+				for i, book := range books {
+					formattedBooks = append(formattedBooks, map[string]interface{}{
+						"book":     book.Title,
+						"price":    prices[i],
+						"quantity": quantity[i],
+					})
+					totalPrice += prices[i] * quantity[i]
+				}
+				formattedOrders = append(formattedOrders, map[string]interface{}{
+					"orderID":         order.OrderID,
+					"seller":          sellerName,
+					"books":           formattedBooks,
+					"price":           totalPrice,
+					"paymentStatus":   order.PaymentReceived,
+					"paymentMethod":   order.PaymentMethod,
+					"BillingAddress":  order.BillingAddress,
+					"DeliveryAddress": order.DeliveryAddress,
+					"Status":          order.Status,
+				})
+			}
+			fmt.Printf("Orders: %+v\n", formattedOrders)
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(formattedOrders)
+			if err != nil {
+				fmt.Println("Failed to encode response: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
 		case "createOrder":
 			fmt.Println("Put request to order API")
 			fmt.Println("This should be an attempt to create an order into reserved")
@@ -634,7 +693,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Order created")
 			return
 		default:
-			fmt.Println("Unsupportet request type to order API")
+			fmt.Println("Unsupportet request type to order API", r.FormValue("requestType"))
 			http.Error(w, "Invalid request type", http.StatusBadRequest)
 		}
 	default:

@@ -1,8 +1,12 @@
 <!DOCTYPE html>
+<!-- Made with CHatGPT-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="../stylesheat.css">
+    <title>User page</title>
     <title>Order Management</title>
     <style>
         table {
@@ -22,9 +26,15 @@
             padding: 5px 10px;
             cursor: pointer;
         }
+        
     </style>
 </head>
 <body>
+    <div class="topnav">
+        <a   href="/start.html">Book Store</a>
+        <a  class="active" id="myaccountlink" href="/user/myaccount.html">My Account</a>
+        <a id="shoppingcartlink" href="../shoppingcart.html">Shopping Cart</a>
+      </div>
     <h2>Order Management</h2>
     <table>
         <thead>
@@ -55,13 +65,19 @@
         let orders = [];
 
         async function fetchOrders() {
-            try {
-                const response = await fetch("../api/orders");
+            //try {
+                const formData = new URLSearchParams()
+                formData.append("requestType","buyerGET")
+                console.log("fetchOrders anropad ", formData)
+                const response = await fetch("../API/orders", {
+                    method: "PUT",
+                    body: formData,
+                });
                 orders = await response.json();
                 loadOrders();
-            } catch (error) {
-                console.error("Error fetching orders:", error);
-            }
+            //} catch (error) {
+            //    console.error("Error fetching orders:", error);
+            //}
         }
 
         function formatValue(value, defaultText) {
@@ -70,7 +86,7 @@
 
         async function updateStatus(orderId, newStatus) {
             try {
-                await fetch("../api/orders", {
+                await fetch("../API/orders", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -89,23 +105,32 @@
             
             orders.forEach(order => {
                 let row = document.createElement("tr");
-                let booksList = order.items.map(item => `${item.name} (x${item.quantity})`).join(", ");
-                let totalPrice = order.items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+                let booksList = order.books.map(item => `${item.name} (x${item.quantity})`).join(", ");
+                let totalPrice = order.books.reduce((sum, item) => sum + item.quantity * item.price, 0);
                 let nextAction = statusTransitions[order.status] || "N/A";
-                
+                if( order.BillingAddress.Valid == false) {
+                    console.log("BillingAddress is null");
+                    order.BillingAddress = "Not Provided";
+                }
+                if (order.DeliveryAddress.Valid == false) {
+                    console.log("DeliveryAddress is null");
+                    order.DeliveryAddress = "Not Provided";
+                }
+                console.log(order);
                 row.innerHTML = `
-                    <td>${order.id}</td>
+                    <td>${order.orderID}</td>
                     <td>${order.seller}</td>
                     <td>${booksList}</td>
                     <td>$${totalPrice.toFixed(2)}</td>
                     <td>${formatValue(order.paymentStatus, "Not Paid")}</td>
                     <td>${formatValue(order.paymentMethod, "Unknown")}</td>
-                    <td>${formatValue(order.billingAddress, "Not Provided")}</td>
-                    <td>${formatValue(order.deliveryAddress, "Not Provided")}</td>
+                    <td>${formatValue(order.BillingAddress, "Not Provided")}</td>
+                    <td>${formatValue(order.DeliveryAddress, "Not Provided")}</td>
                     <td>
                         <button onclick="updateStatus(${order.id}, '${nextAction}')">${order.status}</button>
                     </td>
                 `;
+
                 tableBody.appendChild(row);
             });
         }

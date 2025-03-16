@@ -63,15 +63,15 @@ type Order struct {
 	OrderID             int32
 	SellerID            int32
 	CustomerID          int32
-	TimeEntered         sql.NullTime
+	TimeEntered         []uint8
 	TimeConfirmed       sql.NullTime
 	TimeSent            sql.NullTime
 	TimePaymentReceived sql.NullTime
 	PaymentReceived     bool
 	PaymentMethod       string
 	Status              string
-	DeliveryAddress     string
-	BillingAddress      string
+	DeliveryAddress     sql.NullString
+	BillingAddress      sql.NullString
 }
 
 // enum for orderStatus
@@ -1098,13 +1098,38 @@ func getOrdersByBuyer(buyerID int32, authorizingUserID int32, authorizingPwd str
 	//Authorization ok
 	rows, err := db.Query("SELECT Id, SellerID, CustomerID,TimeEntered,TimeConfirmed,TimeSent,TimePaymentReceived,PaymentReceived,PaymentMethod,Status,DeliveryAddress,BillingAddress FROM Orders WHERE CustomerID = ?", buyerID)
 	if err != nil {
-		return orders, err
+		return orders, fmt.Errorf("getOrdersByBuyer: %v", err)
 	}
 	defer rows.Close()
 
 	return extractOrdersFromRows(rows)
 
 }
+
+func getBooksAndPriceFromOrder(orderID int32) (books []Book, prices []int32, quantities []int32, err error) {
+	rows, err := db.Query("SELECT BookID, Price, Quantity FROM Orders_books WHERE OrderID = ?", orderID)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder1: %v", err)
+	}
+	for rows.Next() {
+		var bookID int32
+		var price int32
+		var quantity int32
+		err := rows.Scan(&bookID, &price, &quantity)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder2: %v", err)
+		}
+		book, err := GetBookById(bookID)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder3: %v", err)
+		}
+		books = append(books, book)
+		prices = append(prices, price)
+		quantities = append(quantities, quantity)
+	}
+	return books, prices, quantities, nil
+}
+
 func extractOrdersFromRows(rows *sql.Rows) ([]Order, error) {
 	var orders []Order
 	for rows.Next() {
