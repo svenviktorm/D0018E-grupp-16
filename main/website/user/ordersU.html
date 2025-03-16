@@ -55,13 +55,6 @@
     </table>
 
     <script>
-        const statusTransitions = {
-            "reserved": "confirm",
-            "confirmed": "send",
-            "sent": "complete",
-            "canceled": "restart",
-            "returned": "inspect"
-        };
         let orders = [];
 
         async function fetchOrders() {
@@ -107,7 +100,6 @@
                 let row = document.createElement("tr");
                 let booksList = order.books.map(item => `${item.name} (x${item.quantity})`).join(", ");
                 let totalPrice = order.books.reduce((sum, item) => sum + item.quantity * item.price, 0);
-                let nextAction = statusTransitions[order.status] || "N/A";
                 if( order.BillingAddress.Valid == false) {
                     console.log("BillingAddress is null");
                     order.BillingAddress = "Not Provided";
@@ -127,7 +119,7 @@
                     <td>${formatValue(order.BillingAddress, "Not Provided")}</td>
                     <td>${formatValue(order.DeliveryAddress, "Not Provided")}</td>
                     <td>
-                        <button onclick="updateStatus(${order.id}, '${nextAction}')">${order.status}</button>
+                        <button onclick="updateStatus(${order.id})">${order.Status}</button>
                     </td>
                 `;
 
