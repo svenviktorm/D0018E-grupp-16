@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 	"fmt"
+	"slices"
 
 	"golang.org/x/crypto/sha3"
 )
@@ -290,15 +291,15 @@ func UpgradeToSeller(toBeSellerID int32, authorizingUserID int32, authorizingPwd
 	if dberr != nil {
 		return -3, fmt.Errorf("AddSeller: transaction error:", dberr)
 	}
-  
-  /*
-  	var descriptionValue interface{}
-	if description.Valid {
-		descriptionValue = description.String
-	} else {
-		descriptionValue = nil
-	}
-  */
+
+	/*
+		  	var descriptionValue interface{}
+			if description.Valid {
+				descriptionValue = description.String
+			} else {
+				descriptionValue = nil
+			}
+	*/
 
 	result, err := tx.Exec("INSERT INTO Sellers (Name, Id, Description) VALUES (?, ?, ?)", sellerName, toBeSellerID, description)
 
@@ -830,6 +831,20 @@ func AddBookToShoppingCart(user User, bookID int32, count int32) (newCount int32
 			return -quantity, fmt.Errorf("AddBookToShoppingCart: More than one row returned")
 		}
 	}
+	var bookCount int32 = 0
+	rows, err = db.Query("SELECT StockAmount FROM Books WHERE Id = ?", bookID)
+	if err != nil {
+		return -quantity, fmt.Errorf("AddBookToShoppingCart4: %v", err)
+	}
+	for rows.Next() {
+		err := rows.Scan(&bookCount)
+		if err != nil {
+			return -quantity, fmt.Errorf("AddBookToShoppingCart5: %v", err)
+		}
+	}
+	if bookCount < count {
+		return -quantity, fmt.Errorf("AddBookToShoppingCart: Not enough books in stock")
+	}
 	if first {
 		_, err := db.Exec("INSERT INTO InShoppingCart (UserID, BookID, Quantity) VALUES (?, ?, ?)", user.UserID, bookID, count)
 		if err != nil {
@@ -948,6 +963,125 @@ func getOrdersBySeller(sellerID int32, authorizingUserID int32, authorizingPwd s
 
 }
 
+func MakeShoppingCartIntoOrderReserved(userO User) error {
+	user, successLogin, err := LogInCheckNotHashed(userO.Username.String, userO.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	tx, dberr := db.Begin()
+	if dberr != nil {
+		return fmt.Errorf("transaction erroor:", dberr)
+	}
+	rows, err := db.Query("SELECT BookID FROM InShoppingCart WHERE UserID = ?", user.UserID)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("MakeShoppingCartIntoOrder1: %v", err)
+	}
+	sellers := []int32{}
+	for rows.Next() {
+		var bookID int32
+		err := rows.Scan(&bookID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder2: %v", err)
+		}
+		rows, err := db.Query("SELECT SellerID FROM Books WHERE Id = ?", bookID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder3: %v", err)
+		}
+		var sellerID int32
+		for rows.Next() {
+			err := rows.Scan(&sellerID)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)
+			}
+		}
+		if !slices.Contains(sellers, sellerID) {
+			sellers = append(sellers, sellerID)
+		}
+	}
+
+	for rows.Next() {
+		var sellerID int32
+		err := rows.Scan(&sellerID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder2: %v", err)
+		}
+		sellers = append(sellers, sellerID)
+	}
+	for _, sellerID := range sellers {
+		rows, err := db.Query("SELECT BookID, Quantity FROM InShoppingCart WHERE UserID = ?", user.UserID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder3: %v", err)
+		}
+		if sellerID == user.UserID {
+			tx.Rollback()
+			fmt.Println("Error: SellerID == UserID")
+			return fmt.Errorf("Cannot order from yourself")
+		}
+		_, err = tx.Exec("INSERT INTO Orders (SellerID, CustomerID, Status) VALUES (?, ?, ?)", sellerID, user.UserID, OrderStatusReserved)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)
+		}
+		for rows.Next() {
+			var bookID int32
+			var quantity int32
+			err := rows.Scan(&bookID, &quantity)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)
+			}
+			prices, err := db.Query("SELECT Price, Available, SellerId FROM Books WHERE Id = ?", bookID)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("MakeShoppingCartIntoOrder5: %v", err)
+			}
+			var price sql.NullInt32
+			var available bool
+			var booksellerID int32
+			for prices.Next() {
+				err := prices.Scan(&price, &available, &booksellerID)
+
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("MakeShoppingCartIntoOrder6: %v", err)
+				}
+				if !available {
+					tx.Rollback()
+					return fmt.Errorf("MakeShoppingCartIntoOrderBook not available")
+				}
+			}
+			if booksellerID == sellerID {
+				_, err = tx.Exec("INSERT INTO Orders_books (OrderID, BookID, Price ,Quantity) VALUES (LAST_INSERT_ID(), ? ,?, ?)", bookID, price, quantity)
+				if err != nil {
+
+					tx.Rollback()
+					return fmt.Errorf("MakeShoppingCartIntoOrder7: %v", err)
+				}
+				_, err = tx.Exec("UPDATE Books SET StockAmount = StockAmount - ? WHERE Id = ?", quantity, bookID)
+				if err != nil {
+					tx.Rollback()
+					return fmt.Errorf("MakeShoppingCartIntoOrder8: %v", err)
+				}
+			}
+		}
+	}
+	err = ResetShoppingCart(userO)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("MakeShoppingCartIntoOrder9: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("Error committing transaction:", err)
+	}
+	return nil
+}
 func getOrdersByBuyer(buyerID int32, authorizingUserID int32, authorizingPwd string) ([]Order, error) {
 	var orders []Order
 	//Check authorization

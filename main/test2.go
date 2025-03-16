@@ -71,11 +71,11 @@ func main() {
 
 	b3 := Book{Title: "testbook2", SellerID: sellerid, Description: sql.NullString{"a nice long description", true}, Edition: sql.NullString{"edition 1", true}, StockAmount: 3, Available: false}
 	//fmt.Println(b3)
-	ids, error := AddUser("KalleAnka", "1234", sql.NullString{"KalleAnka@123.com", true})
+	ids, error = AddUser("KalleAnka", "1234", sql.NullString{"KalleAnka@123.com", true})
 	fmt.Println(ids, error)
 	fmt.Println("kalle")
-	user, _, errorr := LogInCheckNotHashed("KalleAnka", "1234")
-	var userID = user.UserID
+	user, _, errorr = LogInCheckNotHashed("KalleAnka", "1234")
+	userID = user.UserID
 	fmt.Println("Login: ", userID, errorr)
 
 	user, err = GetUserByID(userID)
@@ -83,7 +83,7 @@ func main() {
 	//user.Username = "KalleAnkaSeller2"
 	//user.UserID = 17
 	fmt.Println("Get user: ", user, err)
-	sellerid, error := AddSeller(user, "Testseller", sql.NullString{"", false})
+	sellerid, error = AddSeller(user, "Testseller", sql.NullString{"", false})
 	fmt.Println("addseller ", sellerid, error)
 
 	sellerid = user.UserID
@@ -138,4 +138,19 @@ func main() {
 	fmt.Println(books, err2)
 	DisplayBooklist(books)
 
+	// test add Shoppingcart
+	fmt.Println(AddBookToShoppingCart(user, books[0].BookID, 4))
+	fmt.Println(AddBookToShoppingCart(user, books[1].BookID, 2))
+	fmt.Println(SettCountInShoppingCart(user, books[1].BookID, 8))
+	books, count, err := GetShoppingChartBooks(user)
+	fmt.Println("Shoppingcart", err)
+	for i, b := range books {
+		fmt.Println(b.Title, count[i], i)
+	}
+	fmt.Println(MakeShoppingCartIntoOrderReserved(user))
+	books, count, err = GetShoppingChartBooks(user)
+	fmt.Println("Shoppingcart after reset", err)
+	for i, b := range books {
+		fmt.Println(b.Title, count[i], i)
+	}
 }

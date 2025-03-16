@@ -87,7 +87,6 @@
 <div class="row">
     <div class="column">
       <div class="card" id="userInfoCard">
-        <button id="orders">Orders</button><br>
         <button id="changeEmail">Change email</button>
         <form id="viewForm">
             <input name="changeEmail" type="email" placeholder="New email" id="inputChangeEmail" required><br>
@@ -121,7 +120,22 @@ function getCookie(name) {
     }
     return null;
 }
+document.getElementById("username").innerHTML = "Username: " + getCookie("Username");
+document.getElementById("email").innerHTML = "Email: " + getCookie("Email");
+if (getCookie("Email") == null) {
+    document.getElementById("email").innerHTML = "Email: Not set";
+}
+if (getCookie("IsSeller") == "true") {
+    document.getElementById("sellerButton").style.visibility = "hidden";
+    document.getElementById("becomeSellerForm").style.display = "none";
 
+
+} else {
+    document.getElementById("sellerButton").style.visibility = "visible";
+    document.getElementById("becomeSellerForm").style.display = "block";
+    document.getElementById("sellerOrder").style.display = "none";
+    
+} 
 const formSeller = document.getElementById("becomeSellerForm")
 document.getElementById("sellerButton").addEventListener("click", function() {
 
@@ -160,7 +174,8 @@ document.getElementById("sellerButton").addEventListener("click", function() {
                     body: formData,
                 });
             if (response.ok){
-                //const user=await response.json()
+                const user=await response.json()    
+                document.cookie="IsSeller="+"true"+";Path=/;Max-Age=7200"
                 alert("You are now a seller")
                 console.log(response)
                 console.log(response.headers)

@@ -25,7 +25,7 @@
 
 <div id="cartBooks"></div>
 <button id="clearCart">Clear Cart</button>
-<button id="buyButton" onclick="buy()" style="display: none;">Buy</button>
+<button id="buyButton" onclick="buy()" style="display: none;">Reserve</button>
 
 <script>
 
@@ -124,8 +124,9 @@ async function removeFromCart(bookID) {
     try {
         const formData = new URLSearchParams()
         formData.append("bookID", bookID)
+        formData.append("requestType", "delete")
         await fetch("/API/shoppingcart", {
-            method: "DELETE",
+            method: "PUT",
             body: formData,
         })
         await displayCart()
@@ -146,6 +147,7 @@ async function updateCount(bookID, count, stockAmount) {
         const formData = new URLSearchParams()
         formData.append("bookID", bookID)
         formData.append("count", count)
+        formData.append("requestType", "put")
         await fetch("/API/shoppingcart", {
             method: "PUT",
             body: formData,
@@ -160,10 +162,11 @@ async function updateCount(bookID, count, stockAmount) {
 async function clearCart(){
     try {
         const formData = new URLSearchParams()
-        formData.append("deleatAll", "True")
+        formData.append("deleateAll", "True")
+        formData.append("requestType", "delete")
         console.log("passed formdata")
         await fetch("/API/shoppingcart", {
-            method: "DELETE",
+            method: "PUT",
             body: formData,
         });
         await displayCart()
@@ -171,6 +174,25 @@ async function clearCart(){
     } catch (error) {
         console.error("Error clearing cart:", error)
     }
+}
+
+async function buy() {
+    try {
+        const formData = new URLSearchParams()
+        formData.append("requestType", "createOrder")
+        const response = await fetch("/API/orders", {
+            method: "PUT",
+            body: formData,
+        })
+        const data = await response.text()
+        alert(data)
+        await displayCart()
+        console.log("data:", data)
+    } catch (error) {
+        alert(error)
+        console.error("Error reserving books:", error)
+    }   
+    
 }
 
 displayCart()
