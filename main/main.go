@@ -165,6 +165,48 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		fmt.Println("Delete request to users API")
 		fmt.Println("This should be an attempt to remove a user account")
+		//ToBeDeletedID := r.FormValue("UserID")
+		ToBeDeletedID, err := getIDFromFormvalue(r, "UserID")
+		if err != nil {
+			fmt.Printf("Error when getting ID for the account to be deleted: %v", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		fmt.Println("ID for account to delete:", ToBeDeletedID)
+		AuthUserID, err := getIDFromCookies(r)
+		if err != nil {
+			//TODO
+		}
+		passwordcookie, err := r.Cookie("Password")
+		if err != nil {
+			//TODO
+		}
+		AuthPassword := passwordcookie.Value
+		fmt.Printf("Authorizing ID:%v, password:%v", AuthUserID, AuthPassword)
+		err = deleteUserAccount(int32(ToBeDeletedID), AuthUserID, AuthPassword)
+		if err != nil {
+			myerr, ok := err.(MyError)
+			if !ok {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			} else {
+				switch myerr.errorType {
+				case errorTypeAuthorizationNotFound:
+					http.Error(w, err.Error(), http.StatusUnauthorized)
+				case errorTypeAuthorizationUnauthorized:
+					http.Error(w, err.Error(), http.StatusForbidden)
+				case errorTypeBadRequest:
+					http.Error(w, err.Error(), http.StatusBadRequest)
+				case errorTypeDatabase:
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				case errorTypeUserNotFound:
+					http.Error(w, err.Error(), http.StatusNotFound)
+				case errorTypeConflict:
+					http.Error(w, err.Error(), http.StatusConflict)
+				default:
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
+		}
 	case http.MethodPut:
 		fmt.Println("Put request to users API")
 		fmt.Println("Maybe this request could be used for changing passwords? But not i API so far")
@@ -845,21 +887,29 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 
 		sellerName := r.FormValue("name")
 		description := r.FormValue("description")
-		toBeSellerIDs := r.FormValue("SellerID")
-		if toBeSellerIDs == "" {
-			fmt.Println("Seller ID missing from request form")
-			http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
-			return
-		}
-		toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
-
+		toBeSellerID, err := getIDFromFormvalue(r, "SellerID")
 		if err != nil {
-			fmt.Println("Invalid userID")
-			http.Error(w, "Invalid SellerID", http.StatusBadRequest)
+			fmt.Printf("Error when getting future seller ID: %v", err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		/*
+			toBeSellerIDs := r.FormValue("SellerID")
+			if toBeSellerIDs == "" {
+				fmt.Println("Seller ID missing from request form")
+				http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
+				return
+			}
+			toBeSellerIDint, err := strconv.Atoi(toBeSellerIDs)
 
-		err = UpdateSellerInfo(int32(toBeSellerIDint), int32(authUserID), password, sellerName, sql.NullString{description, true})
+			if err != nil {
+				fmt.Println("Invalid userID")
+				http.Error(w, "Invalid SellerID", http.StatusBadRequest)
+				return
+			}
+		*/
+
+		err = UpdateSellerInfo(toBeSellerID, int32(authUserID), password, sellerName, sql.NullString{description, true})
 		if err != nil {
 			fmt.Println("error updating seller info:", err)
 			myerr, ok := err.(MyError)
@@ -1167,6 +1217,18 @@ func main() {
 	fmt.Println("Server uppe!")
 }
 
+func getIDFromFormvalue(r *http.Request, tag string) (int32, error) {
+	IDs := r.FormValue(tag)
+	if IDs == "" {
+		return -1, fmt.Errorf("getIDFromFormvalue: ID missing from request form")
+	}
+	IDint, err := strconv.Atoi(IDs)
+
+	if err != nil {
+		return -1, fmt.Errorf("getIDFromFormvalue: Invalid ID")
+	}
+	return int32(IDint), nil
+}
 func getIDFromCookies(r *http.Request) (int32, error) {
 	IDcookie, err := r.Cookie("UserID")
 	if err != nil {

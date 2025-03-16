@@ -32,6 +32,7 @@
     sellercookie=getCookie("IsSeller")
     if(sellercookie=="true"){
         document.getElementById("sellerpageslink").style.display="block"
+        //document.getElementById("sellerButton").style.display="block"
     }
     admincookie=getCookie("IsAdmin")
     if(admincookie=="true"){
@@ -87,12 +88,15 @@
 <div class="row">
     <div class="column">
       <div class="card" id="userInfoCard">
+        <p id="username"></p>
+        <p id="email"></p>
         <button id="changeEmail">Change email</button>
         <form id="viewForm">
             <input name="changeEmail" type="email" placeholder="New email" id="inputChangeEmail" required><br>
             <input id="submitChangeEmail" type="submit" value="Submit">
         </form>
-        <button id="sellerButton" type="submit">Become seller</button></div>
+        <button id="sellerButton" type="submit">Become seller</button>
+        <button id="removeButton" type="button">Delete account</button></div>
       </div>
     </div>
 </div>
@@ -106,7 +110,8 @@
 </div>
 
 <script>
-
+const removebutton=document.getElementById("removeButton")
+removebutton.addEventListener("click",removeAccount)
 function getCookie(name) {
     const cookieString = document.cookie;
     if (cookieString) {
@@ -120,11 +125,13 @@ function getCookie(name) {
     }
     return null;
 }
+
 document.getElementById("username").innerHTML = "Username: " + getCookie("Username");
 document.getElementById("email").innerHTML = "Email: " + getCookie("Email");
 if (getCookie("Email") == null) {
     document.getElementById("email").innerHTML = "Email: Not set";
 }
+    
 if (getCookie("IsSeller") == "true") {
     document.getElementById("sellerButton").style.visibility = "hidden";
     document.getElementById("becomeSellerForm").style.display = "none";
@@ -132,8 +139,8 @@ if (getCookie("IsSeller") == "true") {
 
 } else {
     document.getElementById("sellerButton").style.visibility = "visible";
-    document.getElementById("becomeSellerForm").style.display = "block";
-    document.getElementById("sellerOrder").style.display = "none";
+    //document.getElementById("becomeSellerForm").style.display = "block";//This should not be visible until sellerButton is clicked?
+    //document.getElementById("sellerOrder").style.display = "none";
     
 } 
 const formSeller = document.getElementById("becomeSellerForm")
@@ -157,11 +164,13 @@ document.getElementById("sellerButton").addEventListener("click", function() {
 
         userID=getCookie("UserID")
         formData.append("SellerID",userID)
+        
+        console.log(formData)
         /*
 
         const searchParams = new URLSearchParams(formData)
         sends = "IsSeller=true" + searchParams
-        console.log(formData)
+        
         console.log("serachParams: ", searchParams.toString())
 
         */
@@ -174,7 +183,7 @@ document.getElementById("sellerButton").addEventListener("click", function() {
                     body: formData,
                 });
             if (response.ok){
-                const user=await response.json()    
+                //const user=await response.json()    
                 document.cookie="IsSeller="+"true"+";Path=/;Max-Age=7200"
                 alert("You are now a seller")
                 console.log(response)
@@ -235,6 +244,52 @@ const form = document.querySelector("#viewForm");
     console.error(error);
   }
 })    
+
+async function removeAccount(){
+    console.log("remove function called")
+    if (getCookie("IsSeller")=="true"){
+        confirmed=confirm("Are you sure you want to delete this account? This can not be reversed. As a seller you will not be able to delete your account if you have any active orders. Orders count as active if:\n - the order status is 'reserved' or 'confirmed',\n - The order status is 'sent' and the return period have not yet passed, or\n - the order status is 'returned' and the payment have been recieved but not refunded.\n To be able to delete account, cancel or complete any active orders, and in the latter case wait for the return period to pass. You can avoid new orders by marking all your books as unavailable.")
+    
+    }else{
+        confirmed=confirm("Are you sure you want to delete this account? This can not be reversed. If you have any active orders those will continue to be processed as normal but you will not be able to see or get updates about their progress.")
+    }
+    if (confirmed){
+        console.log("proceeding with account removal")
+        searchParams=new URLSearchParams
+        searchParams.append("UserID",getCookie("UserID"))
+        try{
+        const response= await fetch("/API/users?"+searchParams,{method: "Delete"})
+        if (response.ok){
+            alert("Account successfully deleted")
+            logInOut()
+        }else{
+            const errortext= await response.text()
+            console.log(errortext)
+            if (response.status==409){
+                if (errortext.includes( "orders")){
+                alert("Account could not be deleted at this time.\n Error message:" +
+                errortext +
+                "\n As a seller you will not be able to delete your account if you have any active orders. Orders count as active if:\n - the order status is 'reserved' or 'confirmed',\n - The order status is 'sent' and the return period have not yet passed, or\n - the order status is 'returned' and the payment have been recieved but not refunded.\n To be able to delete account, cancel or complete any active orders, and in the latter case wait for the return period to pass. You can avoid new orders by marking all your books as unavailable.")
+                }else if (errortext.includes(  "orders")){
+                    alert("Account could not be deleted at this time.\n Error message:" +
+                errortext +
+                "\n Try removing the book manually.")
+                }else{//should not happen currently but in case of future edits to server code
+                    alert("Account could not be deleted at this time. Error message:\n" +
+                    errortext)
+                }
+                
+            
+
+             } else{
+                throw new Error(`Response status: ${response.status}, error text: ${errortext}`);
+             }
+        }
+        } catch (error) {
+            console.error(error.message);
+        }
+    }   
+}
 </script>
 
 </body>
