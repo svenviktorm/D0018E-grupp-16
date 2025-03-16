@@ -605,7 +605,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("orderHandler called")
 	switch r.Method {
 	case http.MethodPut:
-		fmt.Println("Get request to order API")
+		fmt.Println("Put request to order API")
 		user, err := getUserFromCookies(r)
 		if err != nil {
 			fmt.Println("Failed to get user: ", err)
@@ -680,7 +680,7 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("This should be an attempt to create an order into reserved")
 			user, err := getUserFromCookies(r)
 			if err != nil {
-				fmt.Println("Failed to get user: ", err)
+				fmt.Println("Failed to get user (ORDER CREATE): ", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -691,6 +691,29 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			fmt.Println("Order created")
+			return
+		case "pay":
+			fmt.Println("This should be an attempt to pay an order")
+			orderID := r.FormValue("orderID")
+			orderIDint, err := strconv.Atoi(orderID)
+			if err != nil {
+				fmt.Println("Invalid orderID")
+				http.Error(w, "Invalid orderID", http.StatusBadRequest)
+				return
+			}
+			paymentAccepted := canYouPay()
+			if !paymentAccepted {
+				fmt.Println("Payment not accepted")
+				http.Error(w, "Payment not accepted", http.StatusForbidden)
+				return
+			}
+			err = payOrder(int32(orderIDint), user)
+			if err != nil {
+				fmt.Println("Failed to pay order(PAY ORDER): ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("Order paid")
 			return
 		default:
 			fmt.Println("Unsupportet request type to order API", r.FormValue("requestType"))
@@ -1275,4 +1298,8 @@ func getUserFromCookies(r *http.Request) (User, error) {
 	user.Password = userPsw.Value
 
 	return user, nil
+}
+
+func canYouPay() bool {
+	return true
 }

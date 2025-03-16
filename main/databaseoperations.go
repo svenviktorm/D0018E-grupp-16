@@ -963,6 +963,19 @@ func getOrdersBySeller(sellerID int32, authorizingUserID int32, authorizingPwd s
 
 }
 
+func payOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True WHERE Id = ?", orderID)
+	if err != nil {
+		return fmt.Errorf("payOrder: %v", err)
+	}
+	return nil
+
+}
+
 func MakeShoppingCartIntoOrderReserved(userO User) error {
 	user, successLogin, err := LogInCheckNotHashed(userO.Username.String, userO.Password)
 	if err != nil || !successLogin {
