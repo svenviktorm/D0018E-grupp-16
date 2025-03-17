@@ -492,8 +492,12 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			"stockAmount": book.StockAmount,
 			"available":   book.Available,
 			"isbn":        book.ISBN,
+
 			"numratings":  book.NumRatings,
 			"sumratings":  book.SumRatings,
+
+			"Image":       book.Image,
+
 		})
 	}
 
@@ -664,6 +668,7 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				fmt.Printf("Book removed from cart")
 			}
+
 		default:
 			fmt.Println("Unsupportet request type to shoppingcart API")
 		}
@@ -676,28 +681,134 @@ func shoppingCartHandler(w http.ResponseWriter, r *http.Request) {
 func orderHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("orderHandler called")
 	switch r.Method {
-	case http.MethodGet:
-		fmt.Println("Get request to order API")
-		fmt.Println("This should be an attempt to view the shopping cart")
+	case http.MethodPut:
+		fmt.Println("Put request to order API")
 		user, err := getUserFromCookies(r)
 		if err != nil {
 			fmt.Println("Failed to get user: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		fmt.Println("User: ", user)
-	case http.MethodPut:
+		orders := []Order{}
 		switch r.FormValue("requestType") {
+		case "sellerGET":
+			fmt.Println("This should be an attempt to view the orders on seller side")
+			orders, err = getOrdersBySeller(user.UserID, user.UserID, user.Password, "all")
+			if err != nil {
+				fmt.Println("Failed to get ordersSeller: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			var formattedOrders []map[string]interface{}
+			for _, order := range orders {
+				books, prices, quantity, err := getBooksAndPriceFromOrder(order.OrderID)
+				if err != nil {
+					fmt.Println("Failed to get books and prices: ", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				var formattedBooks []map[string]interface{}
+				var totalPrice int32 = 0
+				for i, book := range books {
+					formattedBooks = append(formattedBooks, map[string]interface{}{
+						"book":     book.Title,
+						"price":    prices[i],
+						"quantity": quantity[i],
+					})
+					totalPrice += prices[i] * quantity[i]
+				}
+				formattedOrders = append(formattedOrders, map[string]interface{}{
+					"orderID":         order.OrderID,
+					"seller":          user.Username,
+					"books":           formattedBooks,
+					"price":           totalPrice,
+					"paymentStatus":   order.PaymentReceived,
+					"paymentMethod":   order.PaymentMethod,
+					"BillingAddress":  order.BillingAddress,
+					"DeliveryAddress": order.DeliveryAddress,
+					"Status":          order.Status,
+				})
+			}
+			fmt.Printf("Orders: %+v\n", formattedOrders)
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(formattedOrders)
+			if err != nil {
+				fmt.Println("Failed to encode response: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
+		case "buyerGET":
+			fmt.Println("This should be an attempt to view the orders on buyer side")
+			orders, err = getOrdersByBuyer(user.UserID, user.UserID, user.Password)
+			if err != nil {
+				fmt.Println("Failed to get ordersUser: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			var formattedOrders []map[string]interface{}
+			for _, order := range orders {
+				books, prices, quantity, err := getBooksAndPriceFromOrder(order.OrderID)
+				if err != nil {
+					fmt.Println("Failed to get books and prices: ", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				var formattedBooks []map[string]interface{}
+				var totalPrice int32 = 0
+				sellerID := order.SellerID
+				sellerName, err := GetUserByID(sellerID)
+				if err != nil {
+					fmt.Println("Failed to get seller name: ", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				for i, book := range books {
+					formattedBooks = append(formattedBooks, map[string]interface{}{
+						"book":     book.Title,
+						"price":    prices[i],
+						"quantity": quantity[i],
+					})
+					totalPrice += prices[i] * quantity[i]
+				}
+				formattedOrders = append(formattedOrders, map[string]interface{}{
+					"orderID":         order.OrderID,
+					"seller":          sellerName,
+					"books":           formattedBooks,
+					"price":           totalPrice,
+					"paymentStatus":   order.PaymentReceived,
+					"paymentMethod":   order.PaymentMethod,
+					"BillingAddress":  order.BillingAddress,
+					"DeliveryAddress": order.DeliveryAddress,
+					"Status":          order.Status,
+				})
+			}
+			fmt.Printf("Orders: %+v\n", formattedOrders)
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(formattedOrders)
+			if err != nil {
+				fmt.Println("Failed to encode response: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
 		case "createOrder":
 			fmt.Println("Put request to order API")
 			fmt.Println("This should be an attempt to create an order into reserved")
 			user, err := getUserFromCookies(r)
 			if err != nil {
-				fmt.Println("Failed to get user: ", err)
+				fmt.Println("Failed to get user (ORDER CREATE): ", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			err = MakeShoppingCartIntoOrderReserved(user)
+			BillingAddress := r.FormValue("billingAddress")
+			DeliveryAddress := r.FormValue("deliveryAddress")
+			if BillingAddress == "" || DeliveryAddress == "" {
+				fmt.Println("Invalid address")
+				http.Error(w, "Invalid address", http.StatusBadRequest)
+				return
+			}
+			fmt.Println("BillingAddress:", BillingAddress, "DeliveryAddress:", DeliveryAddress)
+			err = MakeShoppingCartIntoOrderReserved(user, BillingAddress, DeliveryAddress)
 			if err != nil {
 				fmt.Println("Failed to create order: ", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -705,8 +816,98 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			fmt.Println("Order created")
 			return
+		case "pay":
+			fmt.Println("This should be an attempt to pay an order")
+			orderID := r.FormValue("orderID")
+			orderIDint, err := strconv.Atoi(orderID)
+			if err != nil {
+				fmt.Println("Invalid orderID ", err)
+				fmt.Println(err.Error())
+				http.Error(w, "Invalid orderID", http.StatusBadRequest)
+				return
+			}
+			paymentAccepted := canYouPay()
+			if !paymentAccepted {
+				fmt.Println("Payment not accepted")
+				http.Error(w, "Payment not accepted", http.StatusForbidden)
+				return
+			}
+			err = payOrder(int32(orderIDint), user)
+			if err != nil {
+				fmt.Println("Failed to pay order(PAY ORDER): ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("Order paid")
+			return
+		case "cancel":
+			fmt.Println("This should be an attempt to cancel an order")
+			orderID := r.FormValue("orderID")
+			orderIDint, err := strconv.Atoi(orderID)
+			if err != nil {
+				fmt.Println("Invalid order")
+				http.Error(w, "Invalid order", http.StatusBadRequest)
+				return
+			}
+			err = cancelOrder(int32(orderIDint), user)
+			if err != nil {
+				fmt.Println("Failed to cancel order(CANCEL ORDER): ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("Order canceled")
+			return
+		case "confirm":
+			fmt.Println("This should be an attempt to confirm a order")
+			orderID := r.FormValue("orderID")
+			orderIDint, err := strconv.Atoi(orderID)
+			if err != nil {
+				fmt.Println("Invalid order")
+				http.Error(w, "Invalid order", http.StatusBadRequest)
+				return
+			}
+			err = confirmOrder(int32(orderIDint), user)
+			if err != nil {
+				fmt.Println("Failed to confirm order(CONFIRM ORDER): ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("Order confirmed")
+			return
+		case "send":
+			fmt.Println("This should be an attempt to send a order")
+			orderID := r.FormValue("orderID")
+			orderIDint, err := strconv.Atoi(orderID)
+			if err != nil {
+				fmt.Println("Invalid order")
+				http.Error(w, "Invalid order", http.StatusBadRequest)
+				return
+			}
+			err = sendOrder(int32(orderIDint), user)
+			if err != nil {
+				fmt.Println("Failed to send order(SEND ORDER): ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("Order sent")
+		case "return":
+			fmt.Println("This should be an attempt to return a order")
+			orderID := r.FormValue("orderID")
+			orderIDint, err := strconv.Atoi(orderID)
+			if err != nil {
+				fmt.Println("Invalid order")
+				http.Error(w, "Invalid order", http.StatusBadRequest)
+				return
+			}
+			err = returnOrder(int32(orderIDint), user)
+			if err != nil {
+				fmt.Println("Failed to return order(RETURN ORDER): ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("Order returned")
 		default:
-			fmt.Println("Unsupportet request type to order API")
+			fmt.Println("Unsupportet request type to order API", r.FormValue("requestType"))
 			http.Error(w, "Invalid request type", http.StatusBadRequest)
 		}
 	default:
@@ -1390,4 +1591,8 @@ func getUserFromCookies(r *http.Request) (User, error) {
 	user.Password = userPsw.Value
 
 	return user, nil
+}
+
+func canYouPay() bool {
+	return true
 }

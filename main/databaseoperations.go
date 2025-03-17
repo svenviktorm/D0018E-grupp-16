@@ -40,8 +40,8 @@ type Book struct {
 	Title    string `json:"title"`
 	SellerID int32  `json:"sellerId"`
 
-	Author string `json:"author"`
-
+	Author      string         `json:"author"`
+	Image       string         `json:"image"`
 	Edition     sql.NullString `json:"edition"`
 	Description sql.NullString `json:"description"`
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
@@ -64,15 +64,15 @@ type Order struct {
 	OrderID             int32
 	SellerID            int32
 	CustomerID          int32
-	TimeEntered         sql.NullTime
+	TimeEntered         []uint8
 	TimeConfirmed       sql.NullTime
 	TimeSent            sql.NullTime
 	TimePaymentReceived sql.NullTime
 	PaymentReceived     bool
 	PaymentMethod       string
 	Status              string
-	DeliveryAddress     string
-	BillingAddress      string
+	DeliveryAddress     sql.NullString
+	BillingAddress      sql.NullString
 }
 
 // enum for orderStatus
@@ -514,13 +514,7 @@ func AddBook(book Book) (int32, error) {
 	if !loginSucces {
 		return -1, fmt.Errorf("Addbook: loginsfail %v", loginerr)
 	}*/
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println(book.ISBN)
-	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price) VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price)
+	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price, IMAGE) VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price, book.Image)
 	if err != nil {
 		return -1, fmt.Errorf("addBook: %v", err)
 	}
@@ -698,9 +692,9 @@ func SearchBooksByTitle(titlesearch string, onlyAvailable bool) ([]Book, error) 
 
 	titlesearch = "%" + titlesearch + "%"
 	if onlyAvailable {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Available AND Title LIKE ?", titlesearch)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE Available AND Title LIKE ?", titlesearch)
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Title LIKE ?", titlesearch)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE Title LIKE ?", titlesearch)
 
 	}
 
@@ -716,9 +710,9 @@ func SearchBooksByAuthor(authorsearch string, onlyAvailable bool) ([]Book, error
 	var rows *sql.Rows
 
 	if onlyAvailable {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Available AND MATCH(Author) AGAINST(?)", authorsearch)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE Available AND MATCH(Author) AGAINST(?)", authorsearch)
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE MATCH(Author) AGAINST(?)", authorsearch)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE MATCH(Author) AGAINST(?)", authorsearch)
 
 	}
 
@@ -735,9 +729,9 @@ func SearchBooksByISBN(isbn int, onlyAvailable bool) ([]Book, error) {
 	var rows *sql.Rows
 
 	if onlyAvailable {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE Available AND ISBN=?", isbn)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE Available AND ISBN=?", isbn)
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price FROM Books WHERE ISBN=?", isbn)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE ISBN=?", isbn)
 
 	}
 
@@ -753,7 +747,7 @@ func extractBooksFromSQLresult(rows *sql.Rows) ([]Book, error) {
 	// Loop through rows, using Scan to assign column data to struct fields.
 	for rows.Next() {
 		var b Book
-		if err := rows.Scan(&b.BookID, &b.Title, &b.Author, &b.SellerID, &b.Edition, &b.Description, &b.StockAmount, &b.Available, &b.ISBN, &b.NumRatings, &b.SumRatings, &b.Price); err != nil {
+		if err := rows.Scan(&b.BookID, &b.Title, &b.Author, &b.SellerID, &b.Edition, &b.Description, &b.StockAmount, &b.Available, &b.ISBN, &b.NumRatings, &b.SumRatings, &b.Price, &b.Image); err != nil {
 			return nil, fmt.Errorf("searchBooks: %v", err)
 		}
 		books = append(books, b)
@@ -768,15 +762,15 @@ func GetSellerBooks(sellerID int32) ([]Book, error) {
 	//Changed the name: this function doesn't view the books, it just returns a list of books, so the name ViewSellerBooks was misleading.
 	var books []Book
 
-	rows, err := db.Query("SELECT Id, Title, Author, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID FROM Books WHERE SellerID = ?", sellerID)
+	rows, err := db.Query("SELECT Id, Title, Author, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID, IMAGE FROM Books WHERE SellerID = ?", sellerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getSellerBooks: %v", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.BookID, &book.Title, &book.Author, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID)
+		err := rows.Scan(&book.BookID, &book.Title, &book.Author, &book.Description, &book.Price, &book.Edition, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.SellerID, &book.Image)
 		if err != nil {
 			return nil, err
 		}
@@ -997,7 +991,105 @@ func getOrdersBySeller(sellerID int32, authorizingUserID int32, authorizingPwd s
 
 }
 
-func MakeShoppingCartIntoOrderReserved(userO User) error {
+func payOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True WHERE ID = ? AND SellerID = ?", orderID, user.UserID)
+	if err != nil {
+		return fmt.Errorf("payOrder: %v", err)
+	}
+	return nil
+
+}
+
+func cancelOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	var orderStatus string
+	err = db.QueryRow("SELECT Status FROM Orders WHERE Id = ? AND (CustomerID = ? OR SellerID = ?)", orderID, user.UserID, user.UserID).Scan(&orderStatus)
+	if err != nil {
+		return fmt.Errorf("cancelOrder: %v", err)
+	}
+	if orderStatus != OrderStatusReturned && orderStatus != OrderStatusCanceled && orderStatus != OrderStatusSent {
+		tx, dberr := db.Begin()
+		if dberr != nil {
+			return fmt.Errorf("transaction erroor:", dberr)
+		}
+		rows, err := db.Query("SELECT BookID, Quantity FROM Orders_books WHERE OrderID = ?", orderID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("cancelOrder1: %v", err)
+		}
+		for rows.Next() {
+			fmt.Println("cancelOrder: Looping through books")
+			var bookID int32
+			var quantity int32
+			err := rows.Scan(&bookID, &quantity)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("cancelOrder2: %v", err)
+			}
+			fmt.Println("cancelOrder: BookID: ", bookID, " Quantity: ", quantity)
+			_, err = tx.Exec("UPDATE Books SET StockAmount = StockAmount + ? WHERE Id = ?", quantity, bookID)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("cancelOrder3: %v", err)
+			}
+		}
+		_, err = tx.Exec("UPDATE Orders SET Status = ? WHERE Id = ?", OrderStatusCanceled, orderID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("cancelOrder4: %v", err)
+		}
+		fmt.Println("cancelOrder: Order canceled")
+		tx.Commit()
+		return nil
+	} else {
+		return fmt.Errorf("cancelOrder: Order already canceled, returned or sent")
+	}
+}
+
+func confirmOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusConfirmed, orderID, user.UserID, OrderStatusReserved)
+	if err != nil {
+		return fmt.Errorf("confirmOrder: %v", err)
+	}
+	return nil
+}
+
+func sendOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusSent, orderID, user.UserID, OrderStatusConfirmed)
+	if err != nil {
+		return fmt.Errorf("sendOrder: %v", err)
+	}
+	return nil
+}
+
+func returnOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND CustomerID = ? AND Status = ?", OrderStatusReturned, orderID, user.UserID, OrderStatusSent)
+	if err != nil {
+		return fmt.Errorf("returnOrder: %v", err)
+	}
+	return nil
+}
+
+func MakeShoppingCartIntoOrderReserved(userO User, billingAddress string, deliveryAddress string) error {
 	user, successLogin, err := LogInCheckNotHashed(userO.Username.String, userO.Password)
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
@@ -1057,7 +1149,7 @@ func MakeShoppingCartIntoOrderReserved(userO User) error {
 			fmt.Println("Error: SellerID == UserID")
 			return fmt.Errorf("Cannot order from yourself")
 		}
-		_, err = tx.Exec("INSERT INTO Orders (SellerID, CustomerID, Status) VALUES (?, ?, ?)", sellerID, user.UserID, OrderStatusReserved)
+		_, err = tx.Exec("INSERT INTO Orders (SellerID, CustomerID, Status, DeliveryAddress, BillingAddress) VALUES (?, ?, ?, ?, ?)", sellerID, user.UserID, OrderStatusReserved, deliveryAddress, billingAddress)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)
@@ -1132,13 +1224,38 @@ func getOrdersByBuyer(buyerID int32, authorizingUserID int32, authorizingPwd str
 	//Authorization ok
 	rows, err := db.Query("SELECT Id, SellerID, CustomerID,TimeEntered,TimeConfirmed,TimeSent,TimePaymentReceived,PaymentReceived,PaymentMethod,Status,DeliveryAddress,BillingAddress FROM Orders WHERE CustomerID = ?", buyerID)
 	if err != nil {
-		return orders, err
+		return orders, fmt.Errorf("getOrdersByBuyer: %v", err)
 	}
 	defer rows.Close()
 
 	return extractOrdersFromRows(rows)
 
 }
+
+func getBooksAndPriceFromOrder(orderID int32) (books []Book, prices []int32, quantities []int32, err error) {
+	rows, err := db.Query("SELECT BookID, Price, Quantity FROM Orders_books WHERE OrderID = ?", orderID)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder1: %v", err)
+	}
+	for rows.Next() {
+		var bookID int32
+		var price int32
+		var quantity int32
+		err := rows.Scan(&bookID, &price, &quantity)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder2: %v", err)
+		}
+		book, err := GetBookById(bookID)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder3: %v", err)
+		}
+		books = append(books, book)
+		prices = append(prices, price)
+		quantities = append(quantities, quantity)
+	}
+	return books, prices, quantities, nil
+}
+
 func extractOrdersFromRows(rows *sql.Rows) ([]Order, error) {
 	var orders []Order
 	for rows.Next() {
