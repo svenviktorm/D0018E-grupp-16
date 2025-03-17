@@ -1001,7 +1001,7 @@ func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func sellerHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("sellerHandler called")
+	fmt.Println("sellerHandler called", r.Method)
 
 	/*
 		cookies := r.Cookies()
@@ -1146,8 +1146,47 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	case http.MethodGet:
 		//TODO get seller info
+		fmt.Println("getSellerInfo called")
+
+		sellerIdstr := r.URL.Query().Get("sellerID")
+		sellerId, err := strconv.Atoi(sellerIdstr)
+
+		sellerInfos, err := getSellerInfo(int32(sellerId))
+		if err != nil {
+			fmt.Println("failed to get seller info ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var formattedSellerInfo []map[string]interface{}
+		i := 0
+		for _, sellerInfo := range sellerInfos {
+			if !sellerInfo.Description.Valid {
+				sellerInfo.Description = sql.NullString{String: "", Valid: false}
+			}
+			formattedSellerInfo = append(formattedSellerInfo, map[string]interface{}{
+				"id":          sellerInfo.SellerID,
+				"name":        sellerInfo.Name,
+				"description": sellerInfo.Description.String,
+			})
+			i++
+		}
+
+		fmt.Println("sellerinfo: ", formattedSellerInfo)
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":     "success",
+			"sellerInfo": formattedSellerInfo,
+		})
+		if err != nil {
+			fmt.Println("Failed to encode response: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
 	case http.MethodPut:
 		//TODO update seller info
+		fmt.Println("change seller info")
 		IDcookie, err := r.Cookie("UserID")
 		if err != nil {
 			fmt.Println("error getting userID from cookie")
@@ -1172,13 +1211,20 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		password := passwordCookie.Value
-
 		sellerName := r.FormValue("name")
 		description := r.FormValue("description")
-		toBeSellerID, err := getIDFromFormvalue(r, "SellerID")
+
+		toBeSellerIDs := r.FormValue("SellerID")
+		if toBeSellerIDs == "" {
+			fmt.Println("Seller ID missing from request form")
+			http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
+			return
+		}
+		toBeSellerID, err := strconv.Atoi(toBeSellerIDs)
 		if err != nil {
 			fmt.Printf("Error when getting seller ID: %v", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Invalid SellerID", http.StatusBadRequest)
+
 			return
 		}
 		/*
@@ -1197,7 +1243,7 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		*/
 
-		err = UpdateSellerInfo(toBeSellerID, int32(authUserID), password, sellerName, sql.NullString{description, true})
+		err = UpdateSellerInfo(int32(toBeSellerID), int32(authUserID), password, sellerName, sql.NullString{description, true})
 		if err != nil {
 			fmt.Println("error updating seller info:", err)
 			myerr, ok := err.(MyError)
@@ -1395,7 +1441,6 @@ func getReviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	bookIdstr := r.URL.Query().Get("bookID")
 	bookId, err := strconv.Atoi(bookIdstr)
-	fmt.Println("bookid", bookIdstr)
 
 	reviews, avRating, err := getReviews(int32(bookId))
 	if err != nil {
@@ -1457,15 +1502,21 @@ func createReviewHandler(w http.ResponseWriter, r *http.Request) {
 	userIDstr := IDcookie.Value
 	userIDint, err := strconv.Atoi(userIDstr)
 	ratingint, err := strconv.Atoi(rating)
+	if err != nil {
+		fmt.Println("Invalid rating", err)
+		http.Error(w, "Invalid rating", http.StatusBadRequest)
+		return
+	}
 
 	err = createReview(int32(userIDint), int32(bookIDint), text, ratingint)
 	if err != nil {
 		fmt.Println("couldnt create review", err)
 		return
 	}
-	fmt.Println("succesfully created review")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"message":""}`))
+	w.Write([]byte(`{"message": "Review submitted successfully"}`))
+	fmt.Println("successfully created review")
+
 }
 
 // *** Variables ***
@@ -1532,6 +1583,7 @@ func main() {
 
 func getIDFromFormvalue(r *http.Request, tag string) (int32, error) {
 	IDs := r.FormValue(tag)
+	fmt.Println("IDs", IDs)
 	if IDs == "" {
 		return -1, fmt.Errorf("getIDFromFormvalue: ID missing from request form")
 	}

@@ -90,6 +90,9 @@ CREATE TABLE BookReviews(
     PRIMARY KEY (Id),
     UNIQUE (BookID,UserID),
     FOREIGN KEY (BookId) REFERENCES Books(Id),
-    FOREIGN KEY (UserId) REFERENCES Users(Id)
+    FOREIGN KEY (UserId) REFERENCES Users(Id),
+    CHECK (BookID >= 0),
+    CHECK (UserID >= 0),
+    CHECK (Rating >= 0 AND Rating <= 5)
 );
 

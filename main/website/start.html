@@ -73,12 +73,16 @@
     <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
     <!--<p><b>Available:</b> <span id="detailedBookAvailable"></span></p>-->
     <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
+    <p><b>Seller:</b> <span id="detailedSeller"></span></p>
+    <!--<div id="detailedSeller"></div>-->
     <button onclick="addToCart()">Add to cart</button>
     <input type="number" name="count" id="count" value="1"><br><br>
+    
     <hr>
     <button id="editBookButton">Edit</button>
     <button id="removeBookButton" onclick="removeBook()">Remove book</button>
     <hr>
+
     <h3><b>Reviews</b></h3>
     <hr>
     <p id="sumRatings">Rating</p>
@@ -104,10 +108,10 @@
     <div id="books"></div>
 </div>-->
 
-
 <div class="row">
     <div id="detailedBooksCard"></div>
 </div>
+
 
 <div class="flex-container">
     <div id="edit" style="display: none;">
@@ -130,7 +134,6 @@
 </div>
 
     
-
 
 <script>
   const form = document.querySelector("#searchform");
@@ -202,7 +205,6 @@ console.log("logged in")
 
 
 form.addEventListener("submit", (event) => {
-  console.log("submit called")
   event.preventDefault();
   searchBook();
 });
@@ -216,6 +218,7 @@ books.addEventListener("click", (event) => {
         console
         const card = event.target.closest(".card");
         if (card) {
+
             //const bookId = parseInt(card.getAttribute("data-bookid"), 10);
             const bookId = card.getAttribute("data-bookid");
             console.log("Clicked bookId:", bookId);
@@ -223,24 +226,22 @@ books.addEventListener("click", (event) => {
             
         }
             /*
+
+
             const book = globalJsonData.find(b => {
-                console.log("Comparing with bookId:", b.bookId);
                 return parseInt(b.bookId, 10) === bookId;
             });
             */
            /*
             if (book) {
-                console.log("Found book:", book);
                 showBookDetails(book);
                 books.addEventListener("click", (event) => {
                 const card = event.target.closest(".card");
                 if (card) {
                     const bookId = parseInt(card.getAttribute("data-bookid"), 10);
-                    console.log("Clicked bookId:", bookId);
 
                     const book = jsonData.books.find(b => b.bookId === bookId);
                     if (book) {
-                        console.log("Found book:", book);
                         showBookDetails(book);
                     } else {
                         console.log("Book not found for bookId:", bookId);
@@ -337,7 +338,9 @@ function renderBooks(bookList, sectionTitle) {
             }
         }
 
+
 async function showBookDetails(bookId) {
+
 
     fetch("/API/books/"+bookId, {
                 method: "GET",
@@ -394,46 +397,10 @@ async function showBookDetails(bookId) {
 
                 }
 
+
+    getSellerInfo(book.sellerId)
+
             }).catch(error => console.error("Error:", error));
-
-                /*
-    try{
-                const response =await fetch("/API/books/"+bookId, {
-                 method: "GET",
-                });
-                
-                if (response.ok) {
-                    console.log("Fetched book info for detailed card");
-                    
-                    const book= await response.json()
-                    console.log("Found book:", book);
-
-                    showBookDetails(book);
-                    /*
-                    books.addEventListener("click", (event) => {
-                    const card = event.target.closest(".card");
-                    if (card) {
-                        const bookId = parseInt(card.getAttribute("data-bookid"), 10);
-                        console.log("Clicked bookId:", bookId);
-
-                        const book = jsonData.books.find(b => b.bookId === bookId);
-                        if (book) {
-                            console.log("Found book:", book);
-                            showBookDetails(book);
-                        } else {
-                            console.log("Book not found for bookId:", bookId);
-                        }
-                    }
-                        
-                    });
-                    */
-                /*
-                } else {
-                    console.error("Failed to fetch book info.");
-                }
-                    */
-                    
-            //}
     
     
     
@@ -458,7 +425,6 @@ async function addToCart() {
         const formData = new URLSearchParams();
         formData.append("bookID", bookId);
         formData.append("count", count);
-        console.log(URLSearchParams)
 
         const response = await fetch("/API/shoppingcart", {
             method: "POST",
@@ -478,7 +444,6 @@ async function addToCart() {
 }
 
 function searchBook() {
-    console.log("searchbook clicked")
     const formData = new FormData(form);
   
   const searchParams= new URLSearchParams(formData)
@@ -535,7 +500,6 @@ async function submitReview() {
         const responseData = await response.json()
 
         if (response.ok) {
-            console.log("review submitted successfully")
             alert("Review submitted successfully")
 
             document.getElementById("reviewForm").reset()
@@ -577,7 +541,7 @@ async function fetchReviews(bookId) {
 
         const data = await response.json()
         console.log("reviews", data.reviews)
-        //console.log("sumRatings", data.sumRatings)
+
 
         const reviews= document.getElementById("reviews")
         //const sumRatingElement = document.getElementById("sumRatings")
@@ -619,6 +583,27 @@ async function fetchReviews(bookId) {
     }
 }
 
+
+async function getSellerInfo(sellerId) {
+    try {
+        const response = await fetch(`/API/sellers?sellerID=${sellerId}`, {
+            method: "GET",
+        })
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`)
+        }
+
+        const data = await response.json()
+
+        const seller = document.getElementById("detailedSeller")
+        data.sellerInfo.forEach(sellerInfo => {
+            document.getElementById("detailedSeller").textContent = sellerInfo.name ?? "Unknown name";
+        })
+
+    } catch (error) {
+        console.error("error fetching seller info", error)
+    }
+}
 let editFormSubmitHandler
 
 function editBook(book) {
@@ -822,13 +807,7 @@ async function deleteReview(reviewID){
     
 
 }
-/*
-async function editReview(reviewID){
-    console.log("In edit review")
-    console.log("ReviewID is:")
-    console.log(reviewID)
-}
-*/
+
 </script>
 
 </body>

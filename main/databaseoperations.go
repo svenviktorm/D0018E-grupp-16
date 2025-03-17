@@ -354,8 +354,11 @@ func UpdateSellerInfo(sellerID int32, authorizingUserID int32, authorizingPwd st
 		return MyError{inFunction: inFunction, errorText: "seller account is inactive", errorType: errorTypeUserNotFound}
 	}
 	//Seller account is ok
-	_, err = db.Exec("UPDATE Sellers SET Name = ? Description=? WHERE Id = ?", sellerName, description, sellerID)
+	fmt.Println("sellerName, description, sellerId: ", sellerName, description, sellerID)
+	_, err = db.Exec("UPDATE Sellers SET Name = ?, Description = ? WHERE Id = ?", sellerName, description, sellerID)
+
 	if err != nil {
+		fmt.Println(err)
 		return MyError{inFunction: inFunction, errorText: "error when updating database", errorType: errorTypeBadRequest}
 	}
 	return nil
@@ -683,6 +686,26 @@ func removeBook(available bool, bookId int32, authorizingUserID int32, authorizi
 
 	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
 	return nil
+}
+
+func getSellerInfo(sellerId int32) ([]Seller, error) {
+	rows, err := db.Query("SELECT Id, Name, Description FROM Sellers WHERE Id = ?", sellerId)
+	if err != nil {
+		return nil, fmt.Errorf("getReview1: %v", err)
+	}
+	defer rows.Close()
+	var sellerInfos []Seller
+	for rows.Next() {
+		var sellerInfo Seller
+		err := rows.Scan(&sellerInfo.SellerID, &sellerInfo.Name, &sellerInfo.Description)
+		if err != nil {
+			return nil, fmt.Errorf("getBookById2: %v", err)
+		}
+		sellerInfos = append(sellerInfos, sellerInfo)
+		fmt.Println("sellerInfo: ", sellerInfo)
+	}
+
+	return sellerInfos, nil
 }
 
 func SearchBooksByTitle(titlesearch string, onlyAvailable bool) ([]Book, error) {

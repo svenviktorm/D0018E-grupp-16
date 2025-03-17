@@ -24,6 +24,7 @@
 <h3>Shopping Cart</h3>
 
 <div id="cartBooks"></div>
+<div id="totalsum"><p><b>Total sum:</b></p></div>
 <button id="clearCart">Clear Cart</button>
 <button id="buyButton" onclick="buy()" style="display: none;">Place Order</button>
 
@@ -89,7 +90,7 @@ async function displayCart() {
         const data = await response.json()
 
         const buyButton = document.getElementById("buyButton")
-
+        totalsum = 0
         if (data.status === "success" && data.books.length > 0) {
             const cartBooksDiv = document.getElementById("cartBooks")
             cartBooksDiv.innerHTML = ""
@@ -103,8 +104,9 @@ async function displayCart() {
                     <button onclick="removeFromCart(${book.bookid})">Remove</button>
                     <input type="number" value="${book.count}" onchange="updateCount(${book.bookid}, this.value, ${book.stockAmount})">`
                 cartBooksDiv.appendChild(bookDiv)
+                totalsum += book.price.Int32 * book.count
             })
-
+            document.getElementById("totalsum").textContent = "Total sum: " + totalsum + " kr"
             buyButton.style.display = "block"
 
         } else {
