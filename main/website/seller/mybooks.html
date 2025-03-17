@@ -16,10 +16,57 @@
     <a  href="../start.html">Book Store</a>
     <a class="active" href="../seller/mybooks.html">My Books</a>
     <a  href="../seller/mystorefront.html">My Storefront</a>
+    <a id="ordersS" href="../seller/ordersS.html">My Orders (seller)</a>
     <a  href="../user/myaccount.html">My Account</a>
-    <a  href="javascript:void(0);"
+    
+    <a id="adminpageslink" href="../admin/adminstart.html">Admin Pages</a>
+    <a  href="javascript:void(0);" 
            onclick="logout()">Log Out</a>
 </div>
+<script>
+    
+IDcookie=getCookie("UserID")
+console.log(IDcookie)
+document.getElementById("adminpageslink").style.display="none"
+if (IDcookie!=null && IDcookie!=0){
+console.log("logged in")
+    admincookie=getCookie("IsAdmin")
+    if(admincookie=="true"){
+        document.getElementById("adminpageslink").style.display="block"
+    }
+  }
+  
+  async function logout(){
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url;
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  };
+};
+  function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+      }
+
+</script>
 
 <button id="showform">Add book</button>
 

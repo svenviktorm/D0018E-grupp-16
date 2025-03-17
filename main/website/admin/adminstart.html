@@ -10,56 +10,51 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-    <script src='https://kit.fontawesome.com/a076d05399.js' crossorigin='anonymous'></script>
+    
 </head>
 
 <body>
 
 <!-- Top menue -->
 <div class="topnav">
-    <a  class="active" href="/start.html">Book Store</a>
-    <a  href="../myaccount.html">My Account</a>
+    <a href="../start.html">Book Store</a>
+    <a class="active" href="../admin/adminstart.html">Handle accounts</a>
+    <a  href="../admin/adminOrders.html">Handle orders</a>
+    <a  href="../user/myaccount.html">My Account</a>
     <!-- Whatever adminpages we need should have links here?-->
     <a id="sellerpageslink" href="../seller/mybooks.html">Seller Pages</a>
-    <a id="loginoutbutton" href="javascript:void(0);"
-           onclick="logInOut()">Log In</a>
+    <a  href="javascript:void(0);" 
+           onclick="logout()">Log Out</a>
 </div>
+
 <script>
 IDcookie=getCookie("UserID")
 console.log(IDcookie)
 document.getElementById("sellerpageslink").style.display="none"
 if (IDcookie!=null && IDcookie!=0){
-    console.log("logged in")
-    document.getElementById("loginoutbutton").innerHTML='Log Out'
+    
     sellercookie=getCookie("IsSeller")
     if(sellercookie=="true"){
         document.getElementById("sellerpageslink").style.display="block"
     }
 }
 
-async function logInOut(){
-    IDcookie=getCookie("UserID")
-
-    if (IDcookie==null || IDcookie==0){ // not logged in, go to login page
-        location.href="start/login.html"
-
-    }else{//logged in, logging out
+async function logout(){
     try {
     const response = await fetch("/API/sessions", {
       method: "DELETE",
       redirect: "follow"
     });
     //if (response.ok){
-        location.href=response.url
+        location.href=response.url;
     //} else {
         //TODO handle errors??
     //}
     
   } catch (e) {
     console.error(e);
-  }
-}
-}
+  };
+};
 function getCookie(name) {
     const cookieString = document.cookie;
     if (cookieString) {
@@ -75,7 +70,18 @@ function getCookie(name) {
 }
 </script>
 
-Some admin page should go here
-
+<p>This should be a page where an administrator can search for and handle user accounts.</p>
+<p>Search methods:<br>
+By id <br>
+By username <br>
+By sellername <br>
+Show all accounts <br>
+</p>
+<p>Actions:<br>
+Promote to admin<br>
+Remove account<br>
+Edit sellername and description<br>
+(Maybe edit user info like username/email/password?)
+</p>
 
 </body>

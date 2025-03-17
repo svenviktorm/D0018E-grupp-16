@@ -10,16 +10,16 @@
 </head>
 
 <body>
-
+            
 <!-- Top menue -->
 <div class="topnav">
     <a   href="/start.html">Book Store</a>
     <a  class="active" id="myaccountlink" href="/user/myaccount.html">My Account</a>
-    <a id="shoppingcartlink" href="../shoppingcart.html">Shopping Cart</a>
-    <a id="ordersU" href="/user/ordersU.html">Orders</a>
-    <a id="ordersS" href="/seller/ordersS.html">Seller Orders</a>
+    <a id="shoppingcartlink" href="/user/shoppingcart.html">Shopping Cart</a>
+    <a id="ordersUlink" href="/user/ordersU.html">My orders</a>
+    <!--<a id="ordersS" href="/seller/ordersS.html">Seller Orders</a>-->
     <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
-    <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
+    <a id="adminpageslink" href="/admin/adminstart.html">Admin Pages</a>
     <a id="loginoutbutton" href="javascript:void(0);"
            onclick="logInOut()">Log In/Create account</a>
   </div>
@@ -34,9 +34,9 @@
     sellercookie=getCookie("IsSeller")
     if(sellercookie=="true"){
         document.getElementById("sellerpageslink").style.display="block"
-    } else {
-        document.getElementById("ordersS").style.display="none"
-    }
+    }// else {
+     //   document.getElementById("ordersS").style.display="none"
+    //}
     admincookie=getCookie("IsAdmin")
     if(admincookie=="true"){
         document.getElementById("adminpageslink").style.display="block"
@@ -44,6 +44,7 @@
   }else{
     document.getElementById("myaccountlink").style.display="none"
     
+    document.getElementById("ordersUlink").style.display="none"
     document.getElementById("shoppingcartlink").style.display="none"
   }
   

@@ -265,6 +265,14 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		//HttpOnly: true,
 	}
 	http.SetCookie(w, &admincookie)
+	emailcookie := http.Cookie{
+		Name:   "Email",
+		Value:  "", //just in case removal doesn't work for some reason
+		Path:   "/",
+		MaxAge: 1, //Setting this to 0 SHOULD remove the cookie (according to internet), but that doesn't seem to work?
+		//HttpOnly: true,
+	}
+	http.SetCookie(w, &emailcookie)
 	endtimecookie := http.Cookie{
 		Name:   "SessionEnd",
 		Value:  "0", //just in case removal doesn't work for some reason
@@ -1528,7 +1536,7 @@ func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:                 "root",
-		Passwd:               "AnkaAnka", //"AnkaAnka",
+		Passwd:               "SnusmumrikenVolvo8041", //"AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",

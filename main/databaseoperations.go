@@ -173,7 +173,7 @@ func authorizationCheck(userID int32, password string) (Authorization, error) {
 	//It also returns less data about the user, only that which is relevant for wheter the user have the right to do something.
 	var passwordHash int64 = hash(password)
 	var authorization Authorization = Authorization{UserID: userID}
-	rows, err := db.Query("SELECT IsAdmin, IsSeller FROM Users WHERE Id = ? AND PasswordHash = ? ", userID, passwordHash)
+	rows, err := db.Query("SELECT IsAdmin, IsSeller FROM Users WHERE Id = ? AND PasswordHash = ? AND IsActive", userID, passwordHash)
 	if err != nil {
 
 		return authorization, fmt.Errorf("error in authorizationCheck, query error:  %v", err)
@@ -205,7 +205,7 @@ func LoginCheck(username string, passwordHash int64) (user User, loginSuccess bo
 	loginSuccess = false
 	user.Username = sql.NullString{String: username, Valid: true}
 	err = nil
-	row := db.QueryRow("SELECT Id, Email, IsAdmin, IsSeller, IsActive FROM Users WHERE Username = ? AND PasswordHash = ? ", username, passwordHash)
+	row := db.QueryRow("SELECT Id, Email, IsAdmin, IsSeller, IsActive FROM Users WHERE Username = ? AND PasswordHash = ? AND IsActive", username, passwordHash)
 
 	err = row.Scan(&user.UserID, &user.Email, &user.IsAdmin, &user.IsSeller, &user.IsActive)
 	if err != nil {

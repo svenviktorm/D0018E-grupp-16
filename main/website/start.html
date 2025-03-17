@@ -21,9 +21,10 @@
 <div class="topnav">
     <a  class="active" href="/start.html">Book Store</a>
     <a  id="myaccountlink" href="/user/myaccount.html">My Account</a>
-    <a id="shoppingcartlink" href="../shoppingcart.html">Shopping Cart</a>
+    <a id="shoppingcartlink" href="/user/shoppingcart.html">Shopping Cart</a>
+    <a id="ordersUlink" href="/user/ordersU.html">My orders</a>
     <a id="sellerpageslink" href="/seller/mybooks.html">Seller Pages</a>
-    <a id="adminpageslink" href="/admin/adminstartpage.html">Seller Pages</a>
+    <a id="adminpageslink" href="/admin/adminstart.html">Admin Pages</a>
     <a id="loginoutbutton" href="javascript:void(0);"
            onclick="logInOut()">Log In/Create account</a>
   </div>
@@ -166,7 +167,7 @@ console.log("logged in")
     }
   }else{
     document.getElementById("myaccountlink").style.display="none"
-    
+    document.getElementById("ordersUlink").style.display="none"
     document.getElementById("shoppingcartlink").style.display="none"
   }
   

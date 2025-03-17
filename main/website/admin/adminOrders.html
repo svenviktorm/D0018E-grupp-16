@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Book Store</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="/stylesheat.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+
+    <div class="topnav">
+        <a href="../start.html">Book Store</a>
+        <a  href="../admin/adminstart.html">Handle accounts</a>
+        <a class="active" href="../admin/adminOrders.html">Handle ordres</a>
+        <a  href="../user/myaccount.html">My Account</a>
+        <!-- Whatever adminpages we need should have links here?-->
+        <a id="sellerpageslink" href="../seller/mybooks.html">Seller Pages</a>
+        <a  href="javascript:void(0);" 
+               onclick="logout()">Log Out</a>
+    </div>
+    
+    <script>
+    IDcookie=getCookie("UserID")
+    console.log(IDcookie)
+    document.getElementById("sellerpageslink").style.display="none"
+    if (IDcookie!=null && IDcookie!=0){
+        
+        sellercookie=getCookie("IsSeller")
+        if(sellercookie=="true"){
+            document.getElementById("sellerpageslink").style.display="block"
+        }
+    }
+    
+    async function logout(){
+        try {
+        const response = await fetch("/API/sessions", {
+          method: "DELETE",
+          redirect: "follow"
+        });
+        //if (response.ok){
+            location.href=response.url;
+        //} else {
+            //TODO handle errors??
+        //}
+        
+      } catch (e) {
+        console.error(e);
+      };
+    };
+    function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        }
+        }
+    }
+    return null;
+}
+</script>
+
+<p>This should be a page where an administrator can search for and handle orders.</p>
+<p>Search methods:<br>
+By OrderID<br>
+By SellerID<br>
+By seller name<br>
+By BuyerID<br>
+By buyer username<br>
+(Possibly by time interval?)</p>
+
+<p>Actions:<br>
+Everything that the seller or buyer of the order can do. (Change status, change payment status, etc)</p>
+
+
+</body>

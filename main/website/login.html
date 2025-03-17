@@ -68,13 +68,14 @@ async function sendLogin() {
         console.log("SessionEnd="+sessionEndtime+";Path=/;Max-Age=7200")
         document.cookie="SessionEnd="+sessionEndtime+";Path=/;Max-Age=7200"
         console.log(document.cookie);
-        if (user.IsSeller){
+        if (user.IsAdmin) {
+            console.log("going to admin page")
+            //TODO finish this
+            location.replace("/admin/adminstart.html")
+        } else if (user.IsSeller){
             console.log("going to seller page")
             location.replace("/seller/mybooks.html")
             //TODO should the userID be included in the URL? or passed along? Or should it just be fetched from the cookies?
-        } else if (user.IsAdmin) {
-            console.log("going to admin page")
-            //TODO finish this
         } else {
             console.log("going to buyer page")
             location.replace("/")
