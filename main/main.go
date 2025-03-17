@@ -466,6 +466,7 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			"stockAmount": book.StockAmount,
 			"available":   book.Available,
 			"isbn":        book.ISBN,
+			"Image":       book.Image,
 		})
 	}
 
