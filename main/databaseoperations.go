@@ -100,6 +100,7 @@ const (
 	errorTypeUserNotFound              errorType = -3
 	errorTypeDatabase                  errorType = -4
 	errorTypeBadRequest                errorType = -5
+	errorTypeConflict                  errorType = -6
 )
 
 type MyError struct {
@@ -377,24 +378,26 @@ func UpgradeToAdmin(idToUpgrade int32, authorizingId int32, authorizingPwd strin
 }
 
 func deleteUserAccount(userIDforRemoval int32, authorizingUserID int32, authorizingPwd string) error {
+	inFunction := "deleteUserAccount"
 	auth, err := authorizationCheck(authorizingUserID, authorizingPwd)
 	if err != nil {
-		return fmt.Errorf("Error in deleteUserAccount: Something went wrong in authorizationCheck:%v", err)
+		return MyError{inFunction: inFunction, errorText: fmt.Sprintf("authorization error: %v", err), errorType: errorTypeAuthorizationNotFound}
 	}
+
 	if !auth.AuthorizationOK {
-		return fmt.Errorf("deleteUserAccount failed: authorizing user not found or incorrect password")
+		return MyError{inFunction: inFunction, errorText: "authorization failed: unknown user or wrong password", errorType: errorTypeAuthorizationNotFound}
 	}
 	if !(auth.IsAdmin || authorizingUserID == userIDforRemoval) {
-		return fmt.Errorf("deleteUserAccount failed: authorizing user do not have the right to remove this account (accounts can be removed by themselves or by an admin)")
+		return MyError{inFunction: inFunction, errorText: "authorization failed: authorizing user do not have the right to turn this account into a seller account (can only be done by account itself or administrator)", errorType: errorTypeAuthorizationUnauthorized}
 	}
 	//Deletion is authorized
 	user, err := GetUserByID(userIDforRemoval)
 	if err != nil {
-		return fmt.Errorf("deleteUserAccount failed: could not find the account")
+		return MyError{inFunction: inFunction, errorText: "could not find the account", errorType: errorTypeBadRequest}
 	}
 	tx, err := db.Begin()
 	if err != nil {
-		return fmt.Errorf("Error in deleteUserAccount, failed to start transaction: %v?", err)
+		return MyError{inFunction: inFunction, errorText: "failed to start transaction", errorType: errorTypeDatabase}
 	}
 	defer tx.Rollback()
 	if user.IsSeller {
@@ -405,14 +408,13 @@ func deleteUserAccount(userIDforRemoval int32, authorizingUserID int32, authoriz
 		err := row.Scan(&numActiveOrders)
 		if err != nil {
 			if err == sql.ErrNoRows { //The query returned 0 rows. Should never happen with a count() query?
-				return fmt.Errorf("Error in deleteUserAccount, something weird happened when checking for active orders, got 0 rows from a count query?")
-
+				return MyError{inFunction: inFunction, errorText: "something weird happened when checking for active orders, got 0 rows from a count query?", errorType: errorTypeDatabase}
 			} else { //something else went wrong with the query or scan
-				return fmt.Errorf("Error in deleteUserAccount, database error when checking for active orders:  %v", row.Err())
+				return MyError{inFunction: inFunction, errorText: fmt.Sprintf("database error when checking for active orders:  %v", row.Err()), errorType: errorTypeDatabase}
 			}
 		} else {
 			if numActiveOrders > 0 {
-				return fmt.Errorf("deleteUserAccount failed: User is seller with active orders")
+				return MyError{inFunction: inFunction, errorText: "User is seller with active orders", errorType: errorTypeConflict}
 			}
 		}
 
@@ -421,20 +423,20 @@ func deleteUserAccount(userIDforRemoval int32, authorizingUserID int32, authoriz
 			fmt.Println("removing book:", book.Title)
 			_, err = tx.Exec("UPDATE Books SET Available = ? WHERE Books.Id = ?", false, book.BookID)
 			if err != nil {
-				return fmt.Errorf("deleteUserAccount failed: user is seller and failed to remove book with ID: %v and title: %v. Error:%v", book.BookID, book.Title, err)
+				return MyError{inFunction: inFunction, errorText: fmt.Sprintf("user is seller and failed to remove book with ID: %v and title: %v. Error:%v", book.BookID, book.Title, err), errorType: errorTypeConflict}
 			}
 		}
 		fmt.Println("book removal complete")
 		//Clear the seller info
 		_, err = tx.Exec("UPDATE Sellers Set Name='',description='' WHERE Sellers.Id=?", userIDforRemoval)
 		if err != nil {
-			return fmt.Errorf("Error in deleteUserAccount: something went wrong when clearing seller data: %v ", err)
+			return MyError{inFunction: inFunction, errorText: fmt.Sprintf("something went wrong when clearing seller data: %v ", err), errorType: errorTypeDatabase}
 		}
 	}
 	//Now we can 'delete' the account
 	_, err = tx.Exec("UPDATE Users Set Username=NULL,PasswordHash=0,email=NULL,IsAdmin=false,IsActive=false WHERE Users.Id=?", userIDforRemoval)
 	if err != nil {
-		return fmt.Errorf("Error in deleteUserAccount: something went wrong when clearing the user data: %v ", err)
+		return MyError{inFunction: inFunction, errorText: fmt.Sprintf("something went wrong when clearing the user data: %v ", err), errorType: errorTypeDatabase}
 	}
 	tx.Commit()
 	return nil
