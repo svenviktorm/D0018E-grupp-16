@@ -247,8 +247,8 @@
                     <td>${totalPrice}:-</td>
                     <td>${"payed"}</td>    
                     <td>${formatValue(order.paymentMethod, "Unknown")}</td>
-                    <td>${formatValue(order.BillingAddress, "Not Provided")}</td>
-                    <td>${formatValue(order.DeliveryAddress, "Not Provided")}</td>
+                    <td>${formatValue(order.BillingAddress.String, "Not Provided")}</td>
+                    <td>${formatValue(order.DeliveryAddress.String, "Not Provided")}</td>
                     <td>
                         <button onclick="updateStatus(${order.orderID})">${order.Status}</button>
                     </td>
@@ -263,8 +263,8 @@
                         <button onclick="pay(${order.orderID})">${"Not Payed"}</button>
                         </td>
                     <td>${formatValue(order.paymentMethod, "Unknown")}</td>
-                    <td>${formatValue(order.BillingAddress, "Not Provided")}</td>
-                    <td>${formatValue(order.DeliveryAddress, "Not Provided")}</td>
+                    <td>${formatValue(order.BillingAddress.String, "Not Provided")}</td>
+                    <td>${formatValue(order.DeliveryAddress.String, "Not Provided")}</td>
                     <td>
                         <button onclick="updateStatus(${order.orderID})">${order.Status}</button>
                     </td>

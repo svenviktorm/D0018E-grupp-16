@@ -968,7 +968,7 @@ func payOrder(orderID int32, user User) error {
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
 	}
-	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True WHERE SellerID = ?", orderID)
+	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True WHERE ID = ? AND SellerID = ?", orderID, user.UserID)
 	if err != nil {
 		return fmt.Errorf("payOrder: %v", err)
 	}
@@ -1061,7 +1061,7 @@ func returnOrder(orderID int32, user User) error {
 	return nil
 }
 
-func MakeShoppingCartIntoOrderReserved(userO User) error {
+func MakeShoppingCartIntoOrderReserved(userO User, billingAddress string, deliveryAddress string) error {
 	user, successLogin, err := LogInCheckNotHashed(userO.Username.String, userO.Password)
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
@@ -1121,7 +1121,7 @@ func MakeShoppingCartIntoOrderReserved(userO User) error {
 			fmt.Println("Error: SellerID == UserID")
 			return fmt.Errorf("Cannot order from yourself")
 		}
-		_, err = tx.Exec("INSERT INTO Orders (SellerID, CustomerID, Status) VALUES (?, ?, ?)", sellerID, user.UserID, OrderStatusReserved)
+		_, err = tx.Exec("INSERT INTO Orders (SellerID, CustomerID, Status, DeliveryAddress, BillingAddress) VALUES (?, ?, ?, ?, ?)", sellerID, user.UserID, OrderStatusReserved, deliveryAddress, billingAddress)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)

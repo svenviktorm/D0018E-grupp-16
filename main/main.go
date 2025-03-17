@@ -724,7 +724,15 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			err = MakeShoppingCartIntoOrderReserved(user)
+			BillingAddress := r.FormValue("billingAddress")
+			DeliveryAddress := r.FormValue("deliveryAddress")
+			if BillingAddress == "" || DeliveryAddress == "" {
+				fmt.Println("Invalid address")
+				http.Error(w, "Invalid address", http.StatusBadRequest)
+				return
+			}
+			fmt.Println("BillingAddress:", BillingAddress, "DeliveryAddress:", DeliveryAddress)
+			err = MakeShoppingCartIntoOrderReserved(user, BillingAddress, DeliveryAddress)
 			if err != nil {
 				fmt.Println("Failed to create order: ", err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
