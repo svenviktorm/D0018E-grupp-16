@@ -968,12 +968,69 @@ func payOrder(orderID int32, user User) error {
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
 	}
-	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True WHERE Id = ?", orderID)
+	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True WHERE SellerID = ?", orderID)
 	if err != nil {
 		return fmt.Errorf("payOrder: %v", err)
 	}
 	return nil
 
+}
+
+func cancelOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	var orderStatus string
+	err = db.QueryRow("SELECT Status FROM Orders WHERE Id = ? AND (CustomerID = ? OR SellerID = ?)", orderID, user.UserID, user.UserID).Scan(&orderStatus)
+	if err != nil {
+		return fmt.Errorf("cancelOrder: %v", err)
+	}
+	if orderStatus != OrderStatusReturned && orderStatus != OrderStatusCanceled && orderStatus != OrderStatusSent {
+		_, err = db.Exec("DELETE FROM Orders WHERE Id = ?", orderID)
+		if err != nil {
+			return fmt.Errorf("cancelOrder: %v", err)
+		}
+		return nil
+	} else {
+		return fmt.Errorf("cancelOrder: Order already canceled, returned or sent")
+	}
+}
+
+func confirmOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusConfirmed, orderID, user.UserID, OrderStatusReserved)
+	if err != nil {
+		return fmt.Errorf("confirmOrder: %v", err)
+	}
+	return nil
+}
+
+func sendOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusSent, orderID, user.UserID, OrderStatusConfirmed)
+	if err != nil {
+		return fmt.Errorf("sendOrder: %v", err)
+	}
+	return nil
+}
+
+func returnOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND CustomerID = ? AND Status = ?", OrderStatusReturned, orderID, user.UserID, OrderStatusSent)
+	if err != nil {
+		return fmt.Errorf("returnOrder: %v", err)
+	}
+	return nil
 }
 
 func MakeShoppingCartIntoOrderReserved(userO User) error {

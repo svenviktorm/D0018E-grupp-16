@@ -34,8 +34,9 @@
         <a   href="/start.html">Book Store</a>
         <a  class="active" id="myaccountlink" href="/user/myaccount.html">My Account</a>
         <a id="shoppingcartlink" href="../shoppingcart.html">Shopping Cart</a>
+        <a class="active" id="ordersU" href="/user/ordersU.html">Orders (User)</a>
       </div>
-    <h2>Order Management</h2>
+    <h2>Order Management Seller</h2>
     <table>
         <thead>
             <tr>
@@ -59,7 +60,7 @@
         async function fetchOrders() {
             //try {
                 const formData = new URLSearchParams()
-                formData.append("requestType","buyerGET")
+                formData.append("requestType","sellerGET")
                 console.log("fetchOrders anropad ", formData)
                 const response = await fetch("../API/orders", {
                     method: "PUT",
@@ -85,7 +86,6 @@
                     method: "PUT",
                     body: formData,
                 });
-                //orders = await response.json();
                 loadOrders();
                 if (response.ok) {
                 alert("Payment successful");
@@ -105,23 +105,26 @@
             promptText = "";
             switch (status) {
                 case "reserved":
-                    promptText = "waiting for seller confirmation, if you want to cancel the order type CANCEL";
+                    promptText = "Do You want to confirm the reservation or cancel it? write CONFIRM / CANCEL";
                     break;
                 case "confirmed":
-                    promptText = "waiting for seller confirmation / waiting for payment confirmation, if you want to cancel the order type CANCEL";
+                    promptText = "Do You want to send the order or cancel it? write SENT / CANCEL";
                     break;
                 case "sent":
-                    promptText = "Do you want to return the order? Type RETURN to return the order";
+                    alert("Order is Sent");
                     break;
                 case "cancelled":
                     alert("Order is cancelled");
                     return;
                 case "returned":
-                    alert("Order is  returned");
+                    alert("Order is returned");
                     return;
                 default:
                     alert("Invalid status");
                     return;
+            }
+            if (promptText == "") {
+                return;
             }
             promptAnswer = prompt(promptText);
             if (promptAnswer == null || promptAnswer == "") {
@@ -131,16 +134,15 @@
                 case "reserved":
                     if (promptAnswer.toUpperCase() == "CANCEL") {
                         cancelOrder(orderId);
-                    } 
+                    } else if (promptAnswer.toUpperCase() == "CONFIRM") {
+                        confirmOrder(orderId);
+                    }
                     break;
                 case "confirmed":
                     if (promptAnswer.toUpperCase() == "CANCEL") {
                         cancelOrder(orderId);
-                    }
-                    break;
-                case "sent":
-                    if (promptAnswer.toUpperCase() == "RETURN") {
-                        returnOrder(orderId);
+                    } else if (promptAnswer.toUpperCase() == "SENT") {
+                        sendOrder(orderId);
                     }
                     break;
             }
@@ -170,25 +172,49 @@
             fetchOrders();
         }
 
-        async function returnOrder(orderId) {
-            console.log("cancelOrder anropad på", orderId);
+        async function confirmOrder(orderId) {
+            console.log("confirmOrder anropad på", orderId);
             try {
                 const formData = new URLSearchParams()
-                formData.append("requestType","return")
+                formData.append("requestType","confirm")
                 formData.append("orderID",orderId)
-                console.log("cancelOrder anropad ", formData)
+                console.log("confirmOrder anropad ", formData)
                 const response = await fetch("../API/orders", {
                     method: "PUT",
                     body: formData,
                 }); 
                 loadOrders();
                 if (response.ok) {
-                alert("Order returned");
+                alert("Order confirmed");
                 } else {
-                    alert("Order could not be returned");
+                    alert("Order could not be confirmed");
                 }
             } catch (error) {
-                alert("Order could not be returned");
+                alert("Order could not be confirmed");
+                console.error("Error fetching orders:", error);
+            }
+            fetchOrders();
+        }
+
+        async function sendOrder(orderId) {
+            console.log("sendOrder anropad på", orderId);
+            try {
+                const formData = new URLSearchParams()
+                formData.append("requestType","send")
+                formData.append("orderID",orderId)
+                console.log("sendOrder anropad ", formData)
+                const response = await fetch("../API/orders", {
+                    method: "PUT",
+                    body: formData,
+                }); 
+                loadOrders();
+                if (response.ok) {
+                alert("Order sent");
+                } else {
+                    alert("Order could not be sent");
+                }
+            } catch (error) {
+                alert("Order could not be sent");
                 console.error("Error fetching orders:", error);
             }
             fetchOrders();
@@ -216,10 +242,10 @@
                 if (order.paymentStatus == true) {
                 row.innerHTML = `
                     <td>${order.orderID}</td>
-                    <td>${order.seller.Username.String}</td>
+                    <td>${order.seller.String}</td>
                     <td>${booksList}</td>
                     <td>${totalPrice}:-</td>
-                    <td>${"Payed"}</td>    
+                    <td>${"payed"}</td>    
                     <td>${formatValue(order.paymentMethod, "Unknown")}</td>
                     <td>${formatValue(order.BillingAddress, "Not Provided")}</td>
                     <td>${formatValue(order.DeliveryAddress, "Not Provided")}</td>
@@ -230,10 +256,12 @@
                 } else {
                     row.innerHTML = `
                     <td>${order.orderID}</td>
-                    <td>${order.seller.Username.String}</td>
+                    <td>${order.seller.String}</td>
                     <td>${booksList}</td>
                     <td>${totalPrice}:-</td>
-                    <td>${"Not Payed"}</td>    
+                    <td>
+                        <button onclick="pay(${order.orderID})">${"Not Payed"}</button>
+                        </td>
                     <td>${formatValue(order.paymentMethod, "Unknown")}</td>
                     <td>${formatValue(order.BillingAddress, "Not Provided")}</td>
                     <td>${formatValue(order.DeliveryAddress, "Not Provided")}</td>
