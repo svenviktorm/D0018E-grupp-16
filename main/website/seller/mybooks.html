@@ -391,10 +391,6 @@ function editBook(book) {
         document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
     }
 
-    if (editFormSubmitHandler) {
-        document.getElementById("editBookForm").removeEventListener("submit", editFormSubmitHandler);
-    }
-
     editFormSubmitHandler = async function(event) {
         event.preventDefault();
 
@@ -446,7 +442,7 @@ function editBook(book) {
 
             const data = await response.json();
             console.log(data);
-            alert("Book edited successfully");
+            //alert("Book edited successfully");
             viewBooks();
             editdiv.style.display = "none";
         } catch (error) {

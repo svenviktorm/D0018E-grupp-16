@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="../stylesheat.css">
+    <title>Seller Page</title>
+</head>
+
+<body>
+
+<!-- Top menue -->
+<div class="topnav">
+    <a  href="../start.html">Book Store</a>
+    <a  href="../seller/myorders.html">My Orders</a>
+    <a class="active" href="../seller/mybooks.html">My Books</a>
+    <a  href="../seller/mystorefront.html">My Storefront</a>
+    <a  href="../user/myaccount.html">My Account</a>
+    <a  href="javascript:void(0);"
+           onclick="logout()">Log Out</a>
+</div>
+
+<div>
+    <h3>My Storefront</h3>
+</div>
+
+<div>
+    <p><b>Seller name: </b></p><div id="detailedSeller"></div>
+    <p><b>Desription: </b></p><div id="description"></div>
+    <button id="editSellerButton">Edit info</button>
+</div>
+    
+<div id="edit" style="display: none;">
+    <form id="editSellerForm">   
+        <h3><b>Edit info</b></h3>
+        <input name="name" type="text" placeholder="Name" id="editname"><br>
+        <input name="description" type="text" placeholder="Description" id="editdescription"><br>
+        <button onclick="exitEdit()">Back</button>
+        <input id="editsubmit" type="submit" value="Submit">
+    </form>
+</div>
+
+<!-- JAVASCRIPT starts here-->
+<script>
+
+getSellerInfo()
+
+async function logout(){
+    try {
+    const response = await fetch("/API/sessions", {
+      method: "DELETE",
+      redirect: "follow"
+    });
+    //if (response.ok){
+        location.href=response.url;
+    //} else {
+        //TODO handle errors??
+    //}
+    
+  } catch (e) {
+    console.error(e);
+  };
+};
+
+function getCookie(name) {
+    const cookieString = document.cookie;
+    if (cookieString) {
+        const cookies = cookieString.split(';');
+        for (let cookie of cookies) {
+        const [cookieName, cookieValue] = cookie.trim().split('=');
+        if (cookieName === name) {
+            return cookieValue;
+        };
+        };
+    };
+    return null;
+};
+
+async function getSellerInfo() {
+    sellerId = getCookie("UserID")
+    try {
+        const response = await fetch(`/API/sellers?sellerID=${sellerId}`, {
+            method: "GET",
+        })
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`)
+        }
+
+        const data = await response.json()
+
+        const seller = document.getElementById("detailedSeller")
+        data.sellerInfo.forEach(sellerInfo => {
+            document.getElementById("detailedSeller").textContent = sellerInfo.name ?? "Unknown name";
+            document.getElementById("description").textContent = sellerInfo.description ?? "No description provided";
+        })
+
+    } catch (error) {
+        console.error("error fetching seller info", error)
+    }
+}
+
+document.getElementById("editSellerButton").addEventListener('click', function() {
+    const editdiv = document.getElementById("edit")
+    editdiv.style.display = "block"
+});
+
+document.getElementById("editsubmit").addEventListener('click', function() {
+    editSellerInfo()
+});
+
+async function editSellerInfo() {
+    console.log("edit called")
+
+    const editdiv = document.getElementById("edit")
+    const editform = document.getElementById("editSellerForm")
+
+    
+
+    editname = document.getElementById("editname").value 
+    editdescription = document.getElementById("editdescription").value 
+        
+        event.preventDefault();
+
+        const form = document.querySelector("#editSellerForm");
+        //form = document.getElementById("editBookForm")
+       
+
+        const formData = new FormData(form)
+
+        userID=getCookie("UserID")
+        formData.append("SellerID",userID)
+        
+        console.log(formData)
+        
+        try {
+            const response = await fetch("/API/sellers", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: formData
+            });
+
+
+            const data = await response.json();
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("HTTP error:", response.status, errorText);
+                alert("Error editing book. HTTP error: " + response.status);
+                editdiv.style.display = "none";
+                return;
+            }
+
+            
+            console.log(data);
+            getSellerInfo()
+            editdiv.style.display = "none";
+        } catch (error) {
+            console.error("Error editing info", error);
+            alert("Error editing info");
+            editdiv.style.display = "none";
+        }    
+}
+
+function exitEdit(){
+    const editdiv = document.getElementById("edit")
+    editdiv.style.display = "none";
+}
+
+</script>
+
+</body>
+</html>

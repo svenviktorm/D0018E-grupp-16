@@ -723,7 +723,7 @@ func changeEmailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func sellerHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("sellerHandler called")
+	fmt.Println("sellerHandler called", r.Method)
 
 	/*
 		cookies := r.Cookies()
@@ -898,6 +898,7 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPut:
 		//TODO update seller info
+		fmt.Println("change seller info")
 		IDcookie, err := r.Cookie("UserID")
 		if err != nil {
 			fmt.Println("error getting userID from cookie")
@@ -922,13 +923,19 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		password := passwordCookie.Value
-
 		sellerName := r.FormValue("name")
 		description := r.FormValue("description")
-		toBeSellerID, err := getIDFromFormvalue(r, "SellerID")
+
+		toBeSellerIDs := r.FormValue("SellerID")
+		if toBeSellerIDs == "" {
+			fmt.Println("Seller ID missing from request form")
+			http.Error(w, "Seller ID missing from request form", http.StatusBadRequest)
+			return
+		}
+		toBeSellerID, err := strconv.Atoi(toBeSellerIDs)
 		if err != nil {
-			fmt.Printf("Error when getting future seller ID: %v", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			fmt.Println("Invalid userID")
+			http.Error(w, "Invalid SellerID", http.StatusBadRequest)
 			return
 		}
 		/*
@@ -947,7 +954,7 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		*/
 
-		err = UpdateSellerInfo(toBeSellerID, int32(authUserID), password, sellerName, sql.NullString{description, true})
+		err = UpdateSellerInfo(int32(toBeSellerID), int32(authUserID), password, sellerName, sql.NullString{description, true})
 		if err != nil {
 			fmt.Println("error updating seller info:", err)
 			myerr, ok := err.(MyError)
@@ -1264,6 +1271,7 @@ func main() {
 
 func getIDFromFormvalue(r *http.Request, tag string) (int32, error) {
 	IDs := r.FormValue(tag)
+	fmt.Println("IDs", IDs)
 	if IDs == "" {
 		return -1, fmt.Errorf("getIDFromFormvalue: ID missing from request form")
 	}
