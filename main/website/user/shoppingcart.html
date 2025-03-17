@@ -184,6 +184,7 @@ async function clearCart(){
             body: formData,
         });
         await displayCart()
+        location.reload();
         console.log("cleared cart")
     } catch (error) {
         console.error("Error clearing cart:", error)
