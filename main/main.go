@@ -1543,7 +1543,7 @@ func main() {
 	// Capture connection properties.
 	cfg := mysql.Config{
 		User:                 "root",
-		Passwd:               "SnusmumrikenVolvo8041", //"AnkaAnka",
+		Passwd:               "AnkaAnka", //"AnkaAnka",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "bookstore",
