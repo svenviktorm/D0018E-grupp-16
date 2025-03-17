@@ -41,7 +41,7 @@ type Book struct {
 	SellerID int32  `json:"sellerId"`
 
 	Author      string         `json:"author"`
-	Image       string         `json:"image"`
+	Image       sql.NullString `json:"image"`
 	Edition     sql.NullString `json:"edition"`
 	Description sql.NullString `json:"description"`
 	StockAmount int32          `json:"stockAmount"` //since the 'zero value' of int is 0 the value of StockAmount will be 0 if not set explicitly, which works fine in this case. So no need for a Null-type.
@@ -514,7 +514,7 @@ func AddBook(book Book) (int32, error) {
 	if !loginSucces {
 		return -1, fmt.Errorf("Addbook: loginsfail %v", loginerr)
 	}*/
-	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price, IMAGE) VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price, book.Image)
+	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price, Image) VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price, book.Image)
 	if err != nil {
 		return -1, fmt.Errorf("addBook: %v", err)
 	}
@@ -692,9 +692,9 @@ func SearchBooksByTitle(titlesearch string, onlyAvailable bool) ([]Book, error) 
 
 	titlesearch = "%" + titlesearch + "%"
 	if onlyAvailable {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE Available AND Title LIKE ?", titlesearch)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, Image FROM Books WHERE Available AND Title LIKE ?", titlesearch)
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE Title LIKE ?", titlesearch)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, Image FROM Books WHERE Title LIKE ?", titlesearch)
 
 	}
 
@@ -710,9 +710,9 @@ func SearchBooksByAuthor(authorsearch string, onlyAvailable bool) ([]Book, error
 	var rows *sql.Rows
 
 	if onlyAvailable {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE Available AND MATCH(Author) AGAINST(?)", authorsearch)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, Image FROM Books WHERE Available AND MATCH(Author) AGAINST(?)", authorsearch)
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE MATCH(Author) AGAINST(?)", authorsearch)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, Image FROM Books WHERE MATCH(Author) AGAINST(?)", authorsearch)
 
 	}
 
@@ -729,9 +729,9 @@ func SearchBooksByISBN(isbn int, onlyAvailable bool) ([]Book, error) {
 	var rows *sql.Rows
 
 	if onlyAvailable {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE Available AND ISBN=?", isbn)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, Image FROM Books WHERE Available AND ISBN=?", isbn)
 	} else {
-		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, IMAGE FROM Books WHERE ISBN=?", isbn)
+		rows, err = db.Query("SELECT Id,Title,Author,SellerID,Edition,Description,StockAmount,Available,ISBN,NumRatings,SumRatings,Price, Image FROM Books WHERE ISBN=?", isbn)
 
 	}
 
@@ -762,7 +762,7 @@ func GetSellerBooks(sellerID int32) ([]Book, error) {
 	//Changed the name: this function doesn't view the books, it just returns a list of books, so the name ViewSellerBooks was misleading.
 	var books []Book
 
-	rows, err := db.Query("SELECT Id, Title, Author, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID, IMAGE FROM Books WHERE SellerID = ?", sellerID)
+	rows, err := db.Query("SELECT Id, Title, Author, Description, Price, Edition, StockAmount, Available, ISBN, NumRatings, SumRatings, SellerID, Image FROM Books WHERE SellerID = ?", sellerID)
 	if err != nil {
 		return nil, fmt.Errorf("getSellerBooks: %v", err)
 	}
@@ -820,13 +820,13 @@ func DisplayBooklist(books []Book) {
 */
 
 func GetBookById(bookID int32) (Book, error) {
-	rows, err := db.Query("SELECT Id, Title, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price FROM Books WHERE Id = ?", bookID)
+	rows, err := db.Query("SELECT Id, Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price, Image FROM Books WHERE Id = ?", bookID)
 	if err != nil {
 		return Book{}, fmt.Errorf("getBookById1: %v", err)
 	}
 	var book Book
 	for rows.Next() {
-		err := rows.Scan(&book.BookID, &book.Title, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price)
+		err := rows.Scan(&book.BookID, &book.Title, &book.Author, &book.SellerID, &book.Edition, &book.Description, &book.StockAmount, &book.Available, &book.ISBN, &book.NumRatings, &book.SumRatings, &book.Price, &book.Image)
 		if err != nil {
 			return Book{}, fmt.Errorf("getBookById2: %v", err)
 		}

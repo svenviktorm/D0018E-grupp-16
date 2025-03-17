@@ -85,7 +85,14 @@
     
     <form id="reviewForm" style="display: none;">
         <p>Leave a review</p>
-        <input type="number" id="reviewRating" name="revewRating" placeholder="Rating" pattern="[0-5]{1}" style="width: 70px;">
+        <select id="reviewRating" name="revewRating">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        <!--<input type="number" id="reviewRating" name="revewRating" placeholder="Rating" pattern="[0-5]{1}" style="width: 70px;">-->
         <input type="text" id="reviewText" name="revewText" placeholder="Text" style="width: 50px;">
         <button type="submit" id="submitReviewButton" >Submit review</button>
     </form>
