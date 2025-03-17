@@ -334,6 +334,7 @@ func bookHandler(w http.ResponseWriter, r *http.Request) {
 				//TODO separate error types
 			}
 			w.Header().Set("Content-Type", "application/json")
+			fmt.Println(book)
 			err = json.NewEncoder(w).Encode(book)
 			if err != nil {
 				fmt.Println("Failed to encode response: ", err)
@@ -493,11 +494,10 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			"available":   book.Available,
 			"isbn":        book.ISBN,
 
-			"numratings":  book.NumRatings,
-			"sumratings":  book.SumRatings,
+			"numratings": book.NumRatings,
+			"sumratings": book.SumRatings,
 
-			"Image":       book.Image,
-
+			"Image": book.Image,
 		})
 	}
 
