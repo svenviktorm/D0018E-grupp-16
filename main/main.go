@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
@@ -57,7 +58,7 @@ type Album struct {
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("viewHandler called")
 	requestPath := r.URL.Path
-	//fmt.Println(requestPath)
+	fmt.Println(requestPath)
 	//fmt.Println(r.Header)
 	if requestPath == "/" {
 		http.ServeFile(w, r, "website/start.html")
@@ -312,45 +313,70 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 */
 func bookHandler(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("bookhandler called")
 	switch r.Method {
 	case http.MethodGet:
-		fmt.Println("Book search API called")
-		var books []Book
-		var error error
-		//fmt.Println(r)
-		searchtype := r.FormValue("type")
-		searchstring := r.FormValue("search")
-		switch searchtype {
-		case "Title":
-			books, error = SearchBooksByTitle(searchstring, true)
-
-		case "Author":
-			books, error = SearchBooksByAuthor(searchstring, true)
-		case "ISBN":
-			isbn, err := strconv.Atoi(searchstring)
+		requestPath := r.URL.Path
+		base := path.Base(requestPath)
+		fmt.Println(requestPath)
+		if base != "books" {
+			fmt.Println("Request for individual book")
+			fmt.Println("BookID is", base)
+			BookID, err := strconv.Atoi(base)
 			if err != nil {
-				fmt.Println("Something went wrong when converting ISBN to int")
-				//TODO actuall error handling
+				fmt.Println("Invalid book ID: ", err)
+				http.Error(w, err.Error(), http.StatusBadRequest)
 			}
-			books, error = SearchBooksByISBN(isbn, true)
-		default:
-			fmt.Println("Unimplemented search type")
-		}
-		if error != nil {
-			fmt.Printf("some error: %v", error)
-		}
-		fmt.Println()
-		fmt.Println()
-		fmt.Println()
-		fmt.Println()
-		fmt.Println()
-		fmt.Println("Books: ", books)
-		w.Header().Set("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(books)
-		if err != nil {
-			fmt.Println("Failed to encode response: ", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			book, err := GetBookById(int32(BookID))
+			if err != nil {
+				fmt.Println("Failed to find book: ", err)
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				//TODO separate error types
+			}
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(book)
+			if err != nil {
+				fmt.Println("Failed to encode response: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		} else {
+			fmt.Println("Book search API called")
+			var books []Book
+			var error error
+			//fmt.Println(r)
+			searchtype := r.FormValue("type")
+			searchstring := r.FormValue("search")
+			switch searchtype {
+			case "Title":
+				books, error = SearchBooksByTitle(searchstring, true)
+
+			case "Author":
+				books, error = SearchBooksByAuthor(searchstring, true)
+			case "ISBN":
+				isbn, err := strconv.Atoi(searchstring)
+				if err != nil {
+					fmt.Println("Something went wrong when converting ISBN to int")
+					//TODO actuall error handling
+				}
+				books, error = SearchBooksByISBN(isbn, true)
+			default:
+				fmt.Println("Unimplemented search type")
+			}
+			if error != nil {
+				fmt.Printf("some error: %v", error)
+			}
+			fmt.Println()
+			fmt.Println()
+			fmt.Println()
+			fmt.Println()
+			fmt.Println()
+			fmt.Println("Books: ", books)
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(books)
+			if err != nil {
+				fmt.Println("Failed to encode response: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 		}
 	default:
 		fmt.Println("Unsupportet request type to users API")
@@ -466,14 +492,18 @@ func viewBooksBySellerHandler(w http.ResponseWriter, r *http.Request) {
 			"stockAmount": book.StockAmount,
 			"available":   book.Available,
 			"isbn":        book.ISBN,
+			"numratings":  book.NumRatings,
+			"sumratings":  book.SumRatings,
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
 	err = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "success",
 		"books":  formattedBooks,
 	})
+
 	if err != nil {
 		fmt.Println("Failed to encode response: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1004,6 +1034,7 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Println("seller info updated.")
+		w.WriteHeader(http.StatusOK)
 	default:
 		fmt.Println("Unsupportet request type to sellers API")
 	}
@@ -1291,7 +1322,7 @@ func main() {
 	http.HandleFunc("/API/sessions", sessionHandler)
 
 	http.HandleFunc("/API/shoppingcart", shoppingCartHandler)
-	http.HandleFunc("/API/books", bookHandler)
+	http.HandleFunc("/API/books/", bookHandler)
 	http.HandleFunc("/API/orders", orderHandler)
 
 	log.Fatal(http.ListenAndServe(":80", nil))

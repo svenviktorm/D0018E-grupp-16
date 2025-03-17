@@ -121,7 +121,7 @@
                     <input name="edition" type="text" placeholder="Edition" id="editionedit"><br>
                     <input name="stockAmount" type="number" placeholder="Stock" id="stockAmountedit"><br>
                     <input name="isbn" type="number" placeholder="ISBN" id="isbnedit"><br>
-                    <button type="button" onclick="exitEdit()">Back</button>
+                    <button type="button" id="exitEditButton">Back</button>
                     <input type="submit" value="Submit">
                 </form>
             </div>
@@ -213,16 +213,22 @@ reviewbutton.addEventListener('click',(event)=> {
     submitReview();
 })
 books.addEventListener("click", (event) => {
+        console
         const card = event.target.closest(".card");
         if (card) {
-            const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+            //const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+            const bookId = card.getAttribute("data-bookid");
             console.log("Clicked bookId:", bookId);
-
+            showBookDetails(bookId)
+            
+        }
+            /*
             const book = globalJsonData.find(b => {
                 console.log("Comparing with bookId:", b.bookId);
                 return parseInt(b.bookId, 10) === bookId;
             });
-
+            */
+           /*
             if (book) {
                 console.log("Found book:", book);
                 showBookDetails(book);
@@ -245,7 +251,8 @@ books.addEventListener("click", (event) => {
             } else {
                 console.log("Book not found for bookId:", bookId);
             };
-        };
+            */
+        //};
     });
   
 
@@ -330,52 +337,104 @@ function renderBooks(bookList, sectionTitle) {
             }
         }
 
-function showBookDetails(book) {
-    console.log("Showing book details for:", book.title);
+async function showBookDetails(bookId) {
 
-    const detailedBook = document.getElementById("detailedCard");
+    fetch("/API/books/"+bookId, {
+                method: "GET",
+            })
+            .then(response => response.json())
+            .then(book => {
+                console.log("Fetched book info for detailed card");
+                    
+                    
+                console.log("Found book:", book);
+                console.log("Showing book details for:", book.title);
 
-    detailedBook.setAttribute("data-bookid", book.bookId)
-    detailedBook.setAttribute("data-stock", book.stockAmount)
+                const detailedBook = document.getElementById("detailedCard");
 
-    document.getElementById("detailedBookTitle").textContent = book.title;
-    document.getElementById("detailedBookAuthor").textContent = book.author;
-    document.getElementById("detailedBookDescription").textContent = book.description.String || "No description";
-    document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
-    document.getElementById("detailedBookEdition").textContent = book.edition.String || "No edition";
-    document.getElementById("detailedBookStock").textContent = book.stockAmount;
-    document.getElementById("detailedBookISBN").textContent = book.isbn.Int64;
-    //document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
-    console.log("numratings and sumratings")
-    console.log(book.sumratings)
-    console.log(book.numratings)
-    if (book.numratings.Valid && book.sumratings.Valid && book.numratings.Int32>0){
-        console.log("Can compute average rating")
-         avRating=book.sumratings.Int32/book.numratings.Int32
-         console.log(avRating)
-         document.getElementById("sumRatings").innerHTML = `<p><strong>Average rating:</strong> ${avRating}/5</p><hr>`
-    }else{
-        document.getElementById("sumRatings").innerHTML = `<p><strong>Average rating:</strong> No ratings yet</p><hr>`
-    }
+                detailedBook.setAttribute("data-bookid", book.bookId)
+                detailedBook.setAttribute("data-stock", book.stockAmount)
 
-    detailedBook.style.display = "block";
+                document.getElementById("detailedBookTitle").textContent = book.title;
+                document.getElementById("detailedBookAuthor").textContent = book.author;
+                document.getElementById("detailedBookDescription").textContent = book.description.String || "No description";
+                document.getElementById("detailedBookPrice").textContent = book.price.Int32 ?? "Unknown price";
+                document.getElementById("detailedBookEdition").textContent = book.edition.String || "No edition";
+                document.getElementById("detailedBookStock").textContent = book.stockAmount;
+                document.getElementById("detailedBookISBN").textContent = book.isbn.Int64;
+                //document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
+                console.log("numratings and sumratings")
+                console.log(book.sumratings)
+                console.log(book.numratings)
+                if (book.numratings.Valid && book.sumratings.Valid && book.numratings.Int32>0){
+                    console.log("Can compute average rating")
+                    avRating=book.sumratings.Int32/book.numratings.Int32
+                    console.log(avRating)
+                    document.getElementById("sumRatings").innerHTML = `<p><strong>Average rating:</strong> ${avRating}/5</p><hr>`
+                }else{
+                    document.getElementById("sumRatings").innerHTML = `<p><strong>Average rating:</strong> No ratings yet</p><hr>`
+                }
 
-    fetchReviews(book.bookId);
+                detailedBook.style.display = "block";
 
-    admincookie=getCookie("IsAdmin")
-    IDcookie=getCookie("UserID")
-    //console.log("IDcookie:"+IDcookie+"book.sellerId"+book.sellerId)
-    const editBookButton=document.getElementById("editBookButton")
-    const removeBookButton=document.getElementById("removeBookButton")
-    if((admincookie=="true")||(IDcookie!=null && IDcookie && IDcookie==book.sellerId)){
+                fetchReviews(book.bookId);
+
+                admincookie=getCookie("IsAdmin")
+                IDcookie=getCookie("UserID")
+                //console.log("IDcookie:"+IDcookie+"book.sellerId"+book.sellerId)
+                const editBookButton=document.getElementById("editBookButton")
+                const removeBookButton=document.getElementById("removeBookButton")
+                if((admincookie=="true")||(IDcookie!=null && IDcookie && IDcookie==book.sellerId)){
+                
+                editBookButton.addEventListener('click', function() {
+                    editBook(book);
+                });}else{
+                    editBookButton.style.display="none"
+                    removeBookButton.style.display="none"
+
+                }
+
+            }).catch(error => console.error("Error:", error));
+
+                /*
+    try{
+                const response =await fetch("/API/books/"+bookId, {
+                 method: "GET",
+                });
+                
+                if (response.ok) {
+                    console.log("Fetched book info for detailed card");
+                    
+                    const book= await response.json()
+                    console.log("Found book:", book);
+
+                    showBookDetails(book);
+                    /*
+                    books.addEventListener("click", (event) => {
+                    const card = event.target.closest(".card");
+                    if (card) {
+                        const bookId = parseInt(card.getAttribute("data-bookid"), 10);
+                        console.log("Clicked bookId:", bookId);
+
+                        const book = jsonData.books.find(b => b.bookId === bookId);
+                        if (book) {
+                            console.log("Found book:", book);
+                            showBookDetails(book);
+                        } else {
+                            console.log("Book not found for bookId:", bookId);
+                        }
+                    }
+                        
+                    });
+                    */
+                /*
+                } else {
+                    console.error("Failed to fetch book info.");
+                }
+                    */
+                    
+            //}
     
-    editBookButton.addEventListener('click', function() {
-        editBook(book);
-    });}else{
-        editBookButton.style.display="none"
-        removeBookButton.style.display="none"
-
-    }
     
     
 }
@@ -485,6 +544,7 @@ async function submitReview() {
         bookId = parseInt(bookId, 10)
         closeDetails()
         searchBook()
+        showBookDetails(bookId)
         /*
         console.log(globalJsonData)
             const book = globalJsonData.find(b => {
@@ -524,7 +584,7 @@ async function fetchReviews(bookId) {
         //sumRatingElement.innerHTML = `<p><strong>Average rating:</strong> ${data.avRating}/5</p><hr>`
         reviews.innerHTML = ""
 
-        if (data.reviews.length === 0) {
+        if ((data.reviews==null)||(data.reviews.length === 0)) {
             reviews.innerHTML = "<p>No reviews yet</p>"
             return;
         }
@@ -641,6 +701,7 @@ function editBook(book) {
             console.log(data);
             alert("Book edited successfully");
             searchBook()
+            showBookDetails(bookId)
             editdiv.style.display = "none";
         } catch (error) {
             console.error("Error editing book", error);
@@ -650,12 +711,19 @@ function editBook(book) {
     };
 
     document.getElementById("editBookForm").addEventListener("submit", editFormSubmitHandler);
+
+    exitEditHandler = async function(event) {
+        event.preventDefault();
+        exitEdit(bookId)
+    }
+    document.getElementById("exitEditButton").addEventListener("click",exitEditHandler)
 }
 
-function exitEdit(){
+function exitEdit(bookID){
     console.log("In exitEdit")
     const editdiv = document.getElementById("edit")
     editdiv.style.display = "none";
+    showBookDetails(bookID)
 }
 
 async function removeBook() {
@@ -732,7 +800,9 @@ async function deleteReview(reviewID){
     
         bookId = parseInt(bookId, 10)
         closeDetails()
-        searchBook()/*
+        searchBook()
+        showBookDetails(bookId)
+        /*
             const book = globalJsonData.find(b => {
                 console.log("Comparing with bookId:", b.bookId);
                 return parseInt(b.bookId, 10) === bookId;
