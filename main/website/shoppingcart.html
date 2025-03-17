@@ -26,7 +26,7 @@
 <div id="cartBooks"></div>
 <div id="totalsum"><p><b>Total sum:</b></p></div>
 <button id="clearCart">Clear Cart</button>
-<button id="buyButton" onclick="buy()" style="display: none;">Reserve</button>
+<button id="buyButton" onclick="buy()" style="display: none;">Place Order</button>
 
 <script>
 
@@ -180,8 +180,25 @@ async function clearCart(){
 
 async function buy() {
     try {
+        deliveryAddress = prompt("Enter delivery address")
+        if (deliveryAddress == null) {
+            alert("order canceled")
+            return
+        }
+        billingAddress = prompt("Enter billing address")
+        if (billingAddress == null) {
+            alert("order canceled")
+            return
+        }
+        confirmOrder = prompt("Confirm order with delivery address: " + deliveryAddress + " and billing address: " + billingAddress + ". Type 'yes' to confirm")
+        if (confirmOrder != "yes") {
+            alert("order canceled")
+            return
+        }
         const formData = new URLSearchParams()
         formData.append("requestType", "createOrder")
+        formData.append("deliveryAddress", deliveryAddress)
+        formData.append("billingAddress", billingAddress)
         const response = await fetch("/API/orders", {
             method: "PUT",
             body: formData,
