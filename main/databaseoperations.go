@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"slices"
 
 	"golang.org/x/crypto/sha3"
@@ -539,6 +540,7 @@ func editBook(book Book) (int32, error) {
 
 func createReview(userId int32, bookId int32, text string, rating int) error {
 	var count int
+	inFunction := "createReview"
 	err := db.QueryRow("SELECT COUNT(*) FROM BookReviews WHERE UserID = ? AND BookID = ?", userId, bookId).Scan(&count)
 	if err != nil {
 		return fmt.Errorf("failed to check existing review: %v", err)
@@ -555,8 +557,13 @@ func createReview(userId int32, bookId int32, text string, rating int) error {
 	if sellerId == userId {
 		return fmt.Errorf("sellers cannot review their own books")
 	}
+	tx, err := db.Begin()
+	if err != nil {
+		return MyError{inFunction: inFunction, errorText: "failed to start transaction", errorType: errorTypeDatabase}
+	}
+	defer tx.Rollback()
 
-	_, err = db.Exec("INSERT INTO BookReviews (BookID, UserID, Text, Rating) VALUES (?, ?, ?, ?)", bookId, userId, text, rating)
+	_, err = tx.Exec("INSERT INTO BookReviews (BookID, UserID, Text, Rating) VALUES (?, ?, ?, ?)", bookId, userId, text, rating)
 	if err != nil {
 		return fmt.Errorf("failed to create review: %v", err)
 	}
@@ -564,29 +571,40 @@ func createReview(userId int32, bookId int32, text string, rating int) error {
 	var numRatings int
 	var sumRatings int
 
-	err = db.QueryRow("SELECT COUNT(*), COALESCE(SUM(Rating), 0) FROM BookReviews WHERE BookID = ?", bookId).Scan(&numRatings, &sumRatings)
+	/*
+		err = db.QueryRow("SELECT COUNT(*), COALESCE(SUM(Rating), 0) FROM BookReviews WHERE BookID = ?", bookId).Scan(&numRatings, &sumRatings)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated ratings: %v", err)
+		}
+
+		averageRating := sumRatings / numRatings
+	*/
+
+	err = tx.QueryRow("SELECT Numratings,SumRatings FROM Books WHERE Id=?", bookId).Scan(&numRatings, &sumRatings)
 	if err != nil {
-		return fmt.Errorf("failed to fetch updated ratings: %v", err)
+		return fmt.Errorf("failed to fetch old book ratings: %v", err)
 	}
-
-	averageRating := sumRatings / numRatings
-
-	_, err = db.Exec("UPDATE Books SET NumRatings = ?, SumRatings = ? WHERE Id = ?", numRatings, averageRating, bookId)
+	numRatings = numRatings + 1
+	sumRatings = sumRatings + rating
+	_, err = tx.Exec("UPDATE Books SET NumRatings = ?, SumRatings = ? WHERE Id = ?", numRatings, sumRatings, bookId)
 	if err != nil {
 		return fmt.Errorf("failed to create review: %v", err)
 	}
-
+	tx.Commit()
 	return nil
 }
 
-func getReviews(bookId int32) ([]BookReview, int, error) {
+func getReviews(bookId int32) ([]BookReview, float64, error) {
 	fmt.Println("getReviews called", bookId)
 
-	var sumRatings int
-	err := db.QueryRow("SELECT SumRatings FROM Books WHERE Id = ?", bookId).Scan(&sumRatings)
+	var sumRatings float64
+	var numRatings float64
+	var avRating float64
+	err := db.QueryRow("SELECT NumRatings, SumRatings FROM Books WHERE Id = ?", bookId).Scan(&numRatings, &sumRatings)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get sumRatings: %v", err)
 	}
+	avRating = math.Round((sumRatings/numRatings)*10) / 10
 
 	rows, err := db.Query("SELECT Id, BookID, UserID, Text, Rating FROM BookReviews WHERE BookID = ?", bookId)
 	if err != nil {
@@ -604,7 +622,7 @@ func getReviews(bookId int32) ([]BookReview, int, error) {
 		fmt.Println("bookreview: ", bookReview)
 	}
 
-	return reviews, sumRatings, nil
+	return reviews, avRating, nil
 }
 
 /*
@@ -638,17 +656,31 @@ func SearchBooksByTitleV1(titlesearch string) ([]Book, error) {
 }
 */
 
-func removeBook(available bool, bookId int32) error {
-	var exists bool
+func removeBook(available bool, bookId int32, authorizingUserID int32, authorizingPwd string) error {
 
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM Books WHERE Id = ?)", bookId).Scan(&exists)
+	inFunction := "removeBook"
+	auth, err := authorizationCheck(authorizingUserID, authorizingPwd)
 	if err != nil {
-		return fmt.Errorf("error checking book existence: %v", err)
+		return MyError{inFunction: inFunction, errorText: fmt.Sprintf("authorization error: %v", err), errorType: errorTypeAuthorizationNotFound}
 	}
 
-	if !exists {
-		return fmt.Errorf("book with ID %d does not exist", bookId)
+	if !auth.AuthorizationOK {
+		return MyError{inFunction: inFunction, errorText: "authorization failed: unknown user or wrong password", errorType: errorTypeAuthorizationNotFound}
 	}
+
+	var sellerID int32
+	err = db.QueryRow("SELECT SellerId FROM Books WHERE Id = ?", bookId).Scan(&sellerID)
+	if err != nil {
+		if err == sql.ErrNoRows { //The query returned 0 rows: book does not exist
+			return fmt.Errorf("book with ID %d does not exist", bookId)
+		} else {
+			return fmt.Errorf("error checking sellerID and book existence: %v", err)
+		}
+	}
+	if !(auth.IsAdmin || authorizingUserID == sellerID) {
+		return MyError{inFunction: inFunction, errorText: "authorization failed: authorizing user do not have the right to remove this book (can only be done by the seller of the book or an administrator)", errorType: errorTypeAuthorizationUnauthorized}
+	}
+
 	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
 	return nil
 }
@@ -1240,3 +1272,67 @@ func extractOrdersFromRows(rows *sql.Rows) ([]Order, error) {
 }
 
 //-------REVIEWS-------------
+
+func deleteReview(reviewId int32, authorizingUserID int32, authorizingPwd string) error {
+	inFunction := "deleteReview"
+	auth, err := authorizationCheck(authorizingUserID, authorizingPwd)
+	if err != nil {
+		return MyError{inFunction: inFunction, errorText: fmt.Sprintf("authorization error: %v", err), errorType: errorTypeAuthorizationNotFound}
+	}
+
+	if !auth.AuthorizationOK {
+		return MyError{inFunction: inFunction, errorText: "authorization failed: unknown user or wrong password", errorType: errorTypeAuthorizationNotFound}
+	}
+
+	var reviewerID int32
+	var bookID int32
+	var rating int
+	err = db.QueryRow("SELECT UserID, BookID,rating FROM BookReviews WHERE Id = ?", reviewId).Scan(&reviewerID, &bookID, &rating)
+	if err != nil {
+		if err == sql.ErrNoRows { //The query returned 0 rows: book does not exist
+			return fmt.Errorf("review with ID %d does not exist", reviewId)
+		} else {
+			return fmt.Errorf("error checking reviewerID and review existence: %v", err)
+		}
+	}
+	if !(auth.IsAdmin || authorizingUserID == reviewerID) {
+		return MyError{inFunction: inFunction, errorText: "authorization failed: authorizing user do not have the right to remove this book (can only be done by the seller of the book or an administrator)", errorType: errorTypeAuthorizationUnauthorized}
+	}
+	//Authoriztaion ok
+	tx, err := db.Begin()
+	if err != nil {
+		return MyError{inFunction: inFunction, errorText: "failed to start transaction", errorType: errorTypeDatabase}
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("DELETE FROM BookReviews WHERE Id=?", reviewId)
+	if err != nil {
+		return fmt.Errorf("failed to delete review: %v", err)
+	}
+
+	var numRatings int
+	var sumRatings int
+
+	/*
+		err = db.QueryRow("SELECT COUNT(*), COALESCE(SUM(Rating), 0) FROM BookReviews WHERE BookID = ?", bookId).Scan(&numRatings, &sumRatings)
+		if err != nil {
+			return fmt.Errorf("failed to fetch updated ratings: %v", err)
+		}
+
+		averageRating := sumRatings / numRatings
+	*/
+
+	err = tx.QueryRow("SELECT Numratings,SumRatings FROM Books WHERE Id=?", bookID).Scan(&numRatings, &sumRatings)
+	if err != nil {
+		return fmt.Errorf("failed to fetch old book ratings: %v", err)
+	}
+	numRatings = numRatings - 1
+	sumRatings = sumRatings - rating
+	_, err = tx.Exec("UPDATE Books SET NumRatings = ?, SumRatings = ? WHERE Id = ?", numRatings, sumRatings, bookID)
+	if err != nil {
+		return fmt.Errorf("failed to create review: %v", err)
+	}
+	tx.Commit()
+	return nil
+
+}

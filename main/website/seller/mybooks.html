@@ -52,7 +52,7 @@
                     <input name="edition" type="text" placeholder="Edition" id="editionedit"><br>
                     <input name="stockAmount" type="number" placeholder="Stock" id="stockAmountedit"><br>
                     <input name="isbn" type="number" placeholder="ISBN" id="isbnedit"><br>
-                    <button onclick="exitEdit()">Back</button>
+                    <button id="exitEditButton">Back</button>
                     <input type="submit" value="Submit">
                 </form>
             </div>
@@ -71,6 +71,12 @@
     <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
     <button id="editBookButton">Edit</button>
     <button onclick="removeBook()">Remove book</button>
+    <hr>
+    <h3><b>Reviews</b></h3>
+    <hr>
+    <p id="sumRatings">Rating</p>
+    <hr>
+    <div id="reviews"></div>
     <button onclick="closeDetails()">Close</button>
 </div>
 
@@ -351,7 +357,21 @@ function showBookDetails(book) {
     document.getElementById("detailedBookAvailable").textContent = book.available ? "Yes" : "No";
     document.getElementById("detailedBookISBN").textContent = book.isbn.Int32 ?? "Unknown ISBN";
 
-    detailedBook.style.display = "block";
+    console.log("numratings and sumratings")
+                console.log(book.sumratings)
+                console.log(book.numratings)
+                if (book.numratings.Valid && book.sumratings.Valid && book.numratings.Int32>0){
+                    console.log("Can compute average rating")
+                    avRating=book.sumratings.Int32/book.numratings.Int32
+                    console.log(avRating)
+                    document.getElementById("sumRatings").innerHTML = `<p><strong>Average rating:</strong> ${avRating}/5</p><hr>`
+                }else{
+                    document.getElementById("sumRatings").innerHTML = `<p><strong>Average rating:</strong> No ratings yet</p><hr>`
+                }
+
+                detailedBook.style.display = "block";
+
+                fetchReviews(book.bookId);
 
     document.getElementById("editBookButton").addEventListener('click', function() {
         editBook(book);
@@ -382,7 +402,7 @@ function editBook(book) {
     document.getElementById("priceedit").value = book.price.Int32
     document.getElementById("editionedit").value = book.edition
     document.getElementById("stockAmountedit").value = book.stockAmount
-    document.getElementById("isbnedit").value = book.isbn.Int32
+    document.getElementById("isbnedit").value = book.isbn.Int64
 
     const bookId = book.bookId
 
@@ -396,7 +416,7 @@ function editBook(book) {
 
     editFormSubmitHandler = async function(event) {
         event.preventDefault();
-
+        console.log("in editFormSubmitHandler")
         const bookToEdit = globalJsonData.find(b => b.bookId === bookId);
 
         if (!bookToEdit) {
@@ -422,7 +442,7 @@ function editBook(book) {
             },
             stockAmount: parseInt(document.getElementById("stockAmountedit").value, 10),
             isbn: {
-                Int32: parseInt(document.getElementById("isbnedit").value, 10),
+                Int64: parseInt(document.getElementById("isbnedit").value, 10),
                 Valid: document.getElementById("isbnedit").value.trim() !== ""
             },
             available: bookToEdit.available
@@ -456,11 +476,69 @@ function editBook(book) {
     };
 
     document.getElementById("editBookForm").addEventListener("submit", editFormSubmitHandler);
+    exitEditHandler = async function(event) {
+        event.preventDefault();
+        exitEdit(bookId)
+    }
+    document.getElementById("exitEditButton").addEventListener("click",exitEditHandler)
 }
 
-function exitEdit(){
+function exitEdit(bookID){
+    console.log("In exitEdit")
     const editdiv = document.getElementById("edit")
     editdiv.style.display = "none";
+    showBookDetails(bookID)
+}
+
+async function fetchReviews(bookId) {
+    try {
+        const response = await fetch(`/get_review?bookID=${bookId}`)
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`)
+        }
+
+        const data = await response.json()
+        console.log("reviews", data.reviews)
+        //console.log("sumRatings", data.sumRatings)
+
+        const reviews= document.getElementById("reviews")
+        //const sumRatingElement = document.getElementById("sumRatings")
+        //sumRatingElement.innerHTML = `<p><strong>Average rating:</strong> ${data.avRating}/5</p><hr>`
+        reviews.innerHTML = ""
+
+        if ((data.reviews==null)||(data.reviews.length === 0)) {
+            reviews.innerHTML = "<p>No reviews yet</p>"
+            return;
+        }
+        const isadmin=getCookie("IsAdmin")=="true"
+        const userid=getCookie("UserID")
+        console.log("IsAdmin?:")
+        console.log(isadmin)
+        console.log(userid)
+        data.reviews.forEach(review => {
+            const reviewElement = document.createElement("div")
+            reviewElement.classList.add("review")
+            console.log(review.userid)
+            
+            if (isadmin || userid==review.userid ){
+            reviewElement.innerHTML = 
+                `<p><strong>Rating:</strong> ${review.rating}/5</p>
+                <p><strong>Review:</strong> ${review.text ? review.text : "No review text"}</p>
+                <button type="button" onclick=deleteReview(${review.id})>Delete review</button>
+                <hr>`}
+            else{
+                reviewElement.innerHTML = 
+                `<p><strong>Rating:</strong> ${review.rating}/5</p>
+                <p><strong>Review:</strong> ${review.text ? review.text : "No review text"}</p>
+                <hr>`
+            }
+            reviews.appendChild(reviewElement)
+        })
+
+    } catch (error) {
+        console.error("error fetching reviews", error)
+        reviews.innerHTML = "<p>No reviews yet</p>"
+    }
 }
 
 async function removeBook() {

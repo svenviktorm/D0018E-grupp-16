@@ -82,12 +82,13 @@ CREATE TABLE Orders_books(
 );
 
 CREATE TABLE BookReviews(
-    Id INT NOT NULL,
+    Id INT NOT NULL AUTO_INCREMENT,
     BookID INT NOT NULL,
     UserID INT NOT NULL,
     Text VARCHAR(2500),
     Rating TINYINT ,
     PRIMARY KEY (Id),
+    UNIQUE (BookID,UserID),
     FOREIGN KEY (BookId) REFERENCES Books(Id),
     FOREIGN KEY (UserId) REFERENCES Users(Id)
 );
