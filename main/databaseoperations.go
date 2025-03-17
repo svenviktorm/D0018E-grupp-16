@@ -63,15 +63,15 @@ type Order struct {
 	OrderID             int32
 	SellerID            int32
 	CustomerID          int32
-	TimeEntered         sql.NullTime
+	TimeEntered         []uint8
 	TimeConfirmed       sql.NullTime
 	TimeSent            sql.NullTime
 	TimePaymentReceived sql.NullTime
 	PaymentReceived     bool
 	PaymentMethod       string
 	Status              string
-	DeliveryAddress     string
-	BillingAddress      string
+	DeliveryAddress     sql.NullString
+	BillingAddress      sql.NullString
 }
 
 // enum for orderStatus
@@ -965,7 +965,105 @@ func getOrdersBySeller(sellerID int32, authorizingUserID int32, authorizingPwd s
 
 }
 
-func MakeShoppingCartIntoOrderReserved(userO User) error {
+func payOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True WHERE ID = ? AND SellerID = ?", orderID, user.UserID)
+	if err != nil {
+		return fmt.Errorf("payOrder: %v", err)
+	}
+	return nil
+
+}
+
+func cancelOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	var orderStatus string
+	err = db.QueryRow("SELECT Status FROM Orders WHERE Id = ? AND (CustomerID = ? OR SellerID = ?)", orderID, user.UserID, user.UserID).Scan(&orderStatus)
+	if err != nil {
+		return fmt.Errorf("cancelOrder: %v", err)
+	}
+	if orderStatus != OrderStatusReturned && orderStatus != OrderStatusCanceled && orderStatus != OrderStatusSent {
+		tx, dberr := db.Begin()
+		if dberr != nil {
+			return fmt.Errorf("transaction erroor:", dberr)
+		}
+		rows, err := db.Query("SELECT BookID, Quantity FROM Orders_books WHERE OrderID = ?", orderID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("cancelOrder1: %v", err)
+		}
+		for rows.Next() {
+			fmt.Println("cancelOrder: Looping through books")
+			var bookID int32
+			var quantity int32
+			err := rows.Scan(&bookID, &quantity)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("cancelOrder2: %v", err)
+			}
+			fmt.Println("cancelOrder: BookID: ", bookID, " Quantity: ", quantity)
+			_, err = tx.Exec("UPDATE Books SET StockAmount = StockAmount + ? WHERE Id = ?", quantity, bookID)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("cancelOrder3: %v", err)
+			}
+		}
+		_, err = tx.Exec("UPDATE Orders SET Status = ? WHERE Id = ?", OrderStatusCanceled, orderID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("cancelOrder4: %v", err)
+		}
+		fmt.Println("cancelOrder: Order canceled")
+		tx.Commit()
+		return nil
+	} else {
+		return fmt.Errorf("cancelOrder: Order already canceled, returned or sent")
+	}
+}
+
+func confirmOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusConfirmed, orderID, user.UserID, OrderStatusReserved)
+	if err != nil {
+		return fmt.Errorf("confirmOrder: %v", err)
+	}
+	return nil
+}
+
+func sendOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusSent, orderID, user.UserID, OrderStatusConfirmed)
+	if err != nil {
+		return fmt.Errorf("sendOrder: %v", err)
+	}
+	return nil
+}
+
+func returnOrder(orderID int32, user User) error {
+	user, successLogin, err := LogInCheckNotHashed(user.Username.String, user.Password)
+	if err != nil || !successLogin {
+		return fmt.Errorf("invalid User/login invalid: %v", err)
+	}
+	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND CustomerID = ? AND Status = ?", OrderStatusReturned, orderID, user.UserID, OrderStatusSent)
+	if err != nil {
+		return fmt.Errorf("returnOrder: %v", err)
+	}
+	return nil
+}
+
+func MakeShoppingCartIntoOrderReserved(userO User, billingAddress string, deliveryAddress string) error {
 	user, successLogin, err := LogInCheckNotHashed(userO.Username.String, userO.Password)
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
@@ -1025,7 +1123,7 @@ func MakeShoppingCartIntoOrderReserved(userO User) error {
 			fmt.Println("Error: SellerID == UserID")
 			return fmt.Errorf("Cannot order from yourself")
 		}
-		_, err = tx.Exec("INSERT INTO Orders (SellerID, CustomerID, Status) VALUES (?, ?, ?)", sellerID, user.UserID, OrderStatusReserved)
+		_, err = tx.Exec("INSERT INTO Orders (SellerID, CustomerID, Status, DeliveryAddress, BillingAddress) VALUES (?, ?, ?, ?, ?)", sellerID, user.UserID, OrderStatusReserved, deliveryAddress, billingAddress)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("MakeShoppingCartIntoOrder4: %v", err)
@@ -1100,13 +1198,38 @@ func getOrdersByBuyer(buyerID int32, authorizingUserID int32, authorizingPwd str
 	//Authorization ok
 	rows, err := db.Query("SELECT Id, SellerID, CustomerID,TimeEntered,TimeConfirmed,TimeSent,TimePaymentReceived,PaymentReceived,PaymentMethod,Status,DeliveryAddress,BillingAddress FROM Orders WHERE CustomerID = ?", buyerID)
 	if err != nil {
-		return orders, err
+		return orders, fmt.Errorf("getOrdersByBuyer: %v", err)
 	}
 	defer rows.Close()
 
 	return extractOrdersFromRows(rows)
 
 }
+
+func getBooksAndPriceFromOrder(orderID int32) (books []Book, prices []int32, quantities []int32, err error) {
+	rows, err := db.Query("SELECT BookID, Price, Quantity FROM Orders_books WHERE OrderID = ?", orderID)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder1: %v", err)
+	}
+	for rows.Next() {
+		var bookID int32
+		var price int32
+		var quantity int32
+		err := rows.Scan(&bookID, &price, &quantity)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder2: %v", err)
+		}
+		book, err := GetBookById(bookID)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("getBooksAndPriceFromOrder3: %v", err)
+		}
+		books = append(books, book)
+		prices = append(prices, price)
+		quantities = append(quantities, quantity)
+	}
+	return books, prices, quantities, nil
+}
+
 func extractOrdersFromRows(rows *sql.Rows) ([]Order, error) {
 	var orders []Order
 	for rows.Next() {
