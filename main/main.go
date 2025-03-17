@@ -992,6 +992,7 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Println("seller info updated.")
+		w.WriteHeader(http.StatusOK)
 	default:
 		fmt.Println("Unsupportet request type to sellers API")
 	}

@@ -353,8 +353,11 @@ func UpdateSellerInfo(sellerID int32, authorizingUserID int32, authorizingPwd st
 		return MyError{inFunction: inFunction, errorText: "seller account is inactive", errorType: errorTypeUserNotFound}
 	}
 	//Seller account is ok
-	_, err = db.Exec("UPDATE Sellers SET Name = ? Description=? WHERE Id = ?", sellerName, description, sellerID)
+	fmt.Println("sellerName, description, sellerId: ", sellerName, description, sellerID)
+	_, err = db.Exec("UPDATE Sellers SET Name = ?, Description = ? WHERE Id = ?", sellerName, description, sellerID)
+
 	if err != nil {
+		fmt.Println(err)
 		return MyError{inFunction: inFunction, errorText: "error when updating database", errorType: errorTypeBadRequest}
 	}
 	return nil

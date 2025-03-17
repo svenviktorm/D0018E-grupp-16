@@ -137,22 +137,24 @@ async function editSellerInfo() {
         try {
             const response = await fetch("/API/sellers", {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                //headers: { "Content-Type": "application/json" },
                 body: formData
             });
 
 
-            const data = await response.json();
+            //const data = await response.json();
             if (!response.ok) {
+            
                 const errorText = await response.text();
                 console.error("HTTP error:", response.status, errorText);
                 alert("Error editing book. HTTP error: " + response.status);
                 editdiv.style.display = "none";
                 return;
+                
             }
 
             
-            console.log(data);
+            //console.log(data);
             getSellerInfo()
             editdiv.style.display = "none";
         } catch (error) {
