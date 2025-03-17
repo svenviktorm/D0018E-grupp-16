@@ -858,6 +858,44 @@ func sellerHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	case http.MethodGet:
 		//TODO get seller info
+		fmt.Println("getSellerInfo called")
+
+		sellerIdstr := r.URL.Query().Get("sellerID")
+		sellerId, err := strconv.Atoi(sellerIdstr)
+
+		sellerInfos, err := getSellerInfo(int32(sellerId))
+		if err != nil {
+			fmt.Println("failed to get seller info ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var formattedSellerInfo []map[string]interface{}
+		i := 0
+		for _, sellerInfo := range sellerInfos {
+			if !sellerInfo.Description.Valid {
+				sellerInfo.Description = sql.NullString{String: "", Valid: false}
+			}
+			formattedSellerInfo = append(formattedSellerInfo, map[string]interface{}{
+				"id":          sellerInfo.SellerID,
+				"name":        sellerInfo.Name,
+				"description": sellerInfo.Description.String,
+			})
+			i++
+		}
+
+		fmt.Println("sellerinfo: ", formattedSellerInfo)
+
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":     "success",
+			"sellerInfo": formattedSellerInfo,
+		})
+		if err != nil {
+			fmt.Println("Failed to encode response: ", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
 	case http.MethodPut:
 		//TODO update seller info
 		IDcookie, err := r.Cookie("UserID")
@@ -1085,7 +1123,6 @@ func getReviewHandler(w http.ResponseWriter, r *http.Request) {
 
 	bookIdstr := r.URL.Query().Get("bookID")
 	bookId, err := strconv.Atoi(bookIdstr)
-	fmt.Println("bookid", bookIdstr)
 
 	reviews, sumRatings, err := getReviews(int32(bookId))
 	if err != nil {
@@ -1147,13 +1184,21 @@ func createReviewHandler(w http.ResponseWriter, r *http.Request) {
 	userIDstr := IDcookie.Value
 	userIDint, err := strconv.Atoi(userIDstr)
 	ratingint, err := strconv.Atoi(rating)
+	if err != nil {
+		fmt.Println("Invalid rating", err)
+		http.Error(w, "Invalid rating", http.StatusBadRequest)
+		return
+	}
 
 	err = createReview(int32(userIDint), int32(bookIDint), text, ratingint)
 	if err != nil {
 		fmt.Println("couldnt create review", err)
 		return
 	}
-	fmt.Println("succesfully created review")
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "Review submitted successfully"}`))
+	fmt.Println("successfully created review")
 }
 
 // *** Variables ***

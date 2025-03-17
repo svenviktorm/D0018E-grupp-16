@@ -73,6 +73,8 @@
     <p><b>Stock:</b> <span id="detailedBookStock"></span></p>
     <!--<p><b>Available:</b> <span id="detailedBookAvailable"></span></p>-->
     <p><b>ISBN:</b> <span id="detailedBookISBN"></span></p>
+    <p><b>Seller:</b> <span id="detailedSeller"></span></p>
+    <!--<div id="detailedSeller"></div>-->
     <button onclick="addToCart()">Add to cart</button>
     <input type="number" name="count" id="count"><br><br>
     <h3><b>Reviews</b></h3>
@@ -96,14 +98,9 @@
     <div id="books"></div>
 </div>-->
 
-
 <div class="row">
     <div id="detailedBooksCard"></div>
 </div>
-
-
-    
-
 
 <script>
 IDcookie=getCookie("UserID")
@@ -171,7 +168,6 @@ console.log("logged in")
   const books = document.getElementById("books");
 
 form.addEventListener("submit", (event) => {
-  console.log("submit called")
   event.preventDefault();
   searchBook();
 });
@@ -180,25 +176,20 @@ books.addEventListener("click", (event) => {
         const card = event.target.closest(".card");
         if (card) {
             const bookId = parseInt(card.getAttribute("data-bookid"), 10);
-            console.log("Clicked bookId:", bookId);
 
             const book = globalJsonData.find(b => {
-                console.log("Comparing with bookId:", b.bookId);
                 return parseInt(b.bookId, 10) === bookId;
             });
 
             if (book) {
-                console.log("Found book:", book);
                 showBookDetails(book);
                 books.addEventListener("click", (event) => {
                 const card = event.target.closest(".card");
                 if (card) {
                     const bookId = parseInt(card.getAttribute("data-bookid"), 10);
-                    console.log("Clicked bookId:", bookId);
 
                     const book = jsonData.books.find(b => b.bookId === bookId);
                     if (book) {
-                        console.log("Found book:", book);
                         showBookDetails(book);
                     } else {
                         console.log("Book not found for bookId:", bookId);
@@ -295,7 +286,6 @@ function renderBooks(bookList, sectionTitle) {
         }
 
 function showBookDetails(book) {
-    console.log("Showing book details for:", book.title);
 
     const detailedBook = document.getElementById("detailedCard");
 
@@ -315,6 +305,7 @@ function showBookDetails(book) {
 
     fetchReviews(book.bookId);
 
+    getSellerInfo(book.sellerId)
     /*
     document.getElementById("editBookButton").addEventListener('click', function() {
         editBook(book);
@@ -341,7 +332,6 @@ async function addToCart() {
         const formData = new URLSearchParams();
         formData.append("bookID", bookId);
         formData.append("count", count);
-        console.log(URLSearchParams)
 
         const response = await fetch("/API/shoppingcart", {
             method: "POST",
@@ -360,7 +350,6 @@ async function addToCart() {
 }
 
 function searchBook() {
-    console.log("searchbook clicked")
     const formData = new FormData(form);
   
   const searchParams= new URLSearchParams(formData)
@@ -416,7 +405,6 @@ async function submitReview() {
         const responseData = await response.json()
 
         if (response.ok) {
-            console.log("review submitted successfully")
             alert("Review submitted successfully")
 
             document.getElementById("reviewForm").reset()
@@ -438,8 +426,6 @@ async function fetchReviews(bookId) {
         }
 
         const data = await response.json()
-        console.log("reviews", data.reviews)
-        console.log("sumRatings", data.sumRatings)
 
         const reviews= document.getElementById("reviews")
         const sumRatingElement = document.getElementById("sumRatings")
@@ -464,6 +450,27 @@ async function fetchReviews(bookId) {
     } catch (error) {
         console.error("error fetching reviews", error)
         reviews.innerHTML = "<p>No reviews yet</p>"
+    }
+}
+
+async function getSellerInfo(sellerId) {
+    try {
+        const response = await fetch(`/API/sellers?sellerID=${sellerId}`, {
+            method: "GET",
+        })
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`)
+        }
+
+        const data = await response.json()
+
+        const seller = document.getElementById("detailedSeller")
+        data.sellerInfo.forEach(sellerInfo => {
+            document.getElementById("detailedSeller").textContent = sellerInfo.name ?? "Unknown name";
+        })
+
+    } catch (error) {
+        console.error("error fetching seller info", error)
     }
 }
 </script>

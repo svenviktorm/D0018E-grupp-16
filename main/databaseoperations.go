@@ -586,8 +586,6 @@ func createReview(userId int32, bookId int32, text string, rating int) error {
 }
 
 func getReviews(bookId int32) ([]BookReview, int, error) {
-	fmt.Println("getReviews called", bookId)
-
 	var sumRatings int
 	err := db.QueryRow("SELECT SumRatings FROM Books WHERE Id = ?", bookId).Scan(&sumRatings)
 	if err != nil {
@@ -657,6 +655,26 @@ func removeBook(available bool, bookId int32) error {
 	}
 	db.Exec("UPDATE Books SET Available = ? WHERE Id = ?", available, bookId)
 	return nil
+}
+
+func getSellerInfo(sellerId int32) ([]Seller, error) {
+	rows, err := db.Query("SELECT Id, Name, Description FROM Sellers WHERE Id = ?", sellerId)
+	if err != nil {
+		return nil, fmt.Errorf("getReview1: %v", err)
+	}
+	defer rows.Close()
+	var sellerInfos []Seller
+	for rows.Next() {
+		var sellerInfo Seller
+		err := rows.Scan(&sellerInfo.SellerID, &sellerInfo.Name, &sellerInfo.Description)
+		if err != nil {
+			return nil, fmt.Errorf("getBookById2: %v", err)
+		}
+		sellerInfos = append(sellerInfos, sellerInfo)
+		fmt.Println("sellerInfo: ", sellerInfo)
+	}
+
+	return sellerInfos, nil
 }
 
 func SearchBooksByTitle(titlesearch string, onlyAvailable bool) ([]Book, error) {
