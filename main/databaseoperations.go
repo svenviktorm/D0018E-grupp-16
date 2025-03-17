@@ -442,6 +442,11 @@ func deleteUserAccount(userIDforRemoval int32, authorizingUserID int32, authoriz
 	if err != nil {
 		return MyError{inFunction: inFunction, errorText: fmt.Sprintf("something went wrong when clearing the user data: %v ", err), errorType: errorTypeDatabase}
 	}
+
+	_, err = tx.Exec("DELETE from InShoppingCart WHERE UserID=?", userIDforRemoval)
+	if err != nil {
+		return MyError{inFunction: inFunction, errorText: fmt.Sprintf("something went wrong when clearing the users shopping cart: %v ", err), errorType: errorTypeDatabase}
+	}
 	tx.Commit()
 	return nil
 }
@@ -503,11 +508,27 @@ func AddBookMin(title string, sellerID int32) (int32, error) {
 */
 
 // will not use the id of the book but create one
-func AddBook(book Book) (int32, error) {
-	user, err := GetUserByID(book.SellerID)
+func AddBook(book Book, authorizingUserID int32, authorizingPwd string) (int32, error) {
+
+	authorization, err := authorizationCheck(authorizingUserID, authorizingPwd)
 	if err != nil {
-		return -1, fmt.Errorf("Addbook: %v", err)
+		return -1, fmt.Errorf("AddSeller: authorization error: %v", err)
 	}
+
+	if !authorization.AuthorizationOK {
+		return -1, fmt.Errorf("AddSeller: authorization failed: unknown user or wrong password")
+	}
+	if !(authorization.UserID == book.SellerID || authorization.IsAdmin) {
+		return -2, fmt.Errorf("AddSeller: authorization failed: authorizing user do not have the right to turn this account into a seller account (can only be done by account itself or administrator)")
+	}
+	//Authorization is ok
+
+	/*
+		user, err := GetUserByID(book.SellerID)
+		if err != nil {
+			return -1, fmt.Errorf("Addbook: %v", err)
+		}
+	*/
 	//check if seller exists can be optimized
 	//user, loginSucces ,  loginerr := LogInCheckNotHashed(user.Username, user.Password )
 	/*if loginerr != nil  {
@@ -517,7 +538,7 @@ func AddBook(book Book) (int32, error) {
 	if !loginSucces {
 		return -1, fmt.Errorf("Addbook: loginsfail %v", loginerr)
 	}*/
-	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price, Image) VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, user.UserID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price, book.Image)
+	result, err := db.Exec("INSERT INTO Books (Title, Author, SellerID, Edition, Description, StockAmount, Available, ISBN, NumRatings, SumRatings, Price, Image) VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", book.Title, book.Author, book.SellerID, book.Edition, book.Description, book.StockAmount, book.Available, book.ISBN, 0, 0, book.Price, book.Image)
 	if err != nil {
 		return -1, fmt.Errorf("addBook: %v", err)
 	}

@@ -400,6 +400,13 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	AuthUser, err := getUserFromCookies(r)
+	if err != nil {
+		fmt.Printf("Error when getting authorizing user from cookies: %v", err)
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	var book Book
 	fmt.Println("boddy: ", r.Body)
 
@@ -446,7 +453,7 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 
 	//json.Unmarshal([]byte(r), &book)
 	fmt.Println(book)
-	id, err := AddBook(book)
+	id, err := AddBook(book, AuthUser.UserID, AuthUser.Password)
 
 	if err != nil {
 		fmt.Println("Failed to add book: ", err)
