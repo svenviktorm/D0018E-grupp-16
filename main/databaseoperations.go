@@ -65,9 +65,9 @@ type Order struct {
 	SellerID            int32
 	CustomerID          int32
 	TimeEntered         []uint8
-	TimeConfirmed       sql.NullTime
-	TimeSent            sql.NullTime
-	TimePaymentReceived sql.NullTime
+	TimeConfirmed       []uint8
+	TimeSent            []uint8
+	TimePaymentReceived []uint8
 	PaymentReceived     bool
 	PaymentMethod       string
 	Status              string
@@ -997,9 +997,6 @@ func getOrdersBySeller(sellerID int32, authorizingUserID int32, authorizingPwd s
 		rows, err = db.Query("SELECT Id, SellerID, CustomerID,TimeEntered,TimeConfirmed,TimeSent,TimePaymentReceived,PaymentReceived,PaymentMethod,Status,DeliveryAddress,BillingAddress FROM Orders WHERE SellerID = ? AND Status=?", sellerID, OrderStatusReserved)
 	case OrderStatusConfirmed:
 		rows, err = db.Query("SELECT Id, SellerID, CustomerID,TimeEntered,TimeConfirmed,TimeSent,TimePaymentReceived,PaymentReceived,PaymentMethod,Status,DeliveryAddress,BillingAddress FROM Orders WHERE SellerID = ? AND Status=? ", sellerID, OrderStatusConfirmed)
-	case "refundable":
-		rows, err = db.Query("SELECT Id, SellerID, CustomerID,TimeEntered,TimeConfirmed,TimeSent,TimePaymentReceived,PaymentReceived,PaymentMethod,Status,DeliveryAddress,BillingAddress FROM Orders WHERE SellerID = ? AND Status=? AND DATEDIFF(TimeSent,CURDATE())>?+2", sellerID, OrderStatusSent, returnsAllowedTime)
-		//TODO FINISH OR REMOVE
 	}
 	if err != nil {
 		return orders, err
@@ -1019,7 +1016,7 @@ func payOrder(orderID int32, user User) error {
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
 	}
-	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True WHERE ID = ? AND SellerID = ?", orderID, user.UserID)
+	_, err = db.Exec("UPDATE Orders SET PaymentReceived = True, TimePaymentReceived = CURRENT_TIMESTAMP WHERE ID = ? AND SellerID = ?", orderID, user.UserID)
 	if err != nil {
 		return fmt.Errorf("payOrder: %v", err)
 	}
@@ -1081,7 +1078,7 @@ func confirmOrder(orderID int32, user User) error {
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
 	}
-	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusConfirmed, orderID, user.UserID, OrderStatusReserved)
+	_, err = db.Exec("UPDATE Orders SET Status = ?,TimeConfirmed = CURRENT_TIMESTAMP WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusConfirmed, orderID, user.UserID, OrderStatusReserved)
 	if err != nil {
 		return fmt.Errorf("confirmOrder: %v", err)
 	}
@@ -1093,7 +1090,7 @@ func sendOrder(orderID int32, user User) error {
 	if err != nil || !successLogin {
 		return fmt.Errorf("invalid User/login invalid: %v", err)
 	}
-	_, err = db.Exec("UPDATE Orders SET Status = ? WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusSent, orderID, user.UserID, OrderStatusConfirmed)
+	_, err = db.Exec("UPDATE Orders SET Status = ?, TimeSent = CURRENT_TIMESTAMP  WHERE Id = ? AND SellerID = ? AND Status = ?", OrderStatusSent, orderID, user.UserID, OrderStatusConfirmed)
 	if err != nil {
 		return fmt.Errorf("sendOrder: %v", err)
 	}
