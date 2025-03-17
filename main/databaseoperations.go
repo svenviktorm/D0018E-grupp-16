@@ -987,10 +987,38 @@ func cancelOrder(orderID int32, user User) error {
 		return fmt.Errorf("cancelOrder: %v", err)
 	}
 	if orderStatus != OrderStatusReturned && orderStatus != OrderStatusCanceled && orderStatus != OrderStatusSent {
-		_, err = db.Exec("DELETE FROM Orders WHERE Id = ?", orderID)
-		if err != nil {
-			return fmt.Errorf("cancelOrder: %v", err)
+		tx, dberr := db.Begin()
+		if dberr != nil {
+			return fmt.Errorf("transaction erroor:", dberr)
 		}
+		rows, err := db.Query("SELECT BookID, Quantity FROM Orders_books WHERE OrderID = ?", orderID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("cancelOrder1: %v", err)
+		}
+		for rows.Next() {
+			fmt.Println("cancelOrder: Looping through books")
+			var bookID int32
+			var quantity int32
+			err := rows.Scan(&bookID, &quantity)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("cancelOrder2: %v", err)
+			}
+			fmt.Println("cancelOrder: BookID: ", bookID, " Quantity: ", quantity)
+			_, err = tx.Exec("UPDATE Books SET StockAmount = StockAmount + ? WHERE Id = ?", quantity, bookID)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("cancelOrder3: %v", err)
+			}
+		}
+		_, err = tx.Exec("UPDATE Orders SET Status = ? WHERE Id = ?", OrderStatusCanceled, orderID)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("cancelOrder4: %v", err)
+		}
+		fmt.Println("cancelOrder: Order canceled")
+		tx.Commit()
 		return nil
 	} else {
 		return fmt.Errorf("cancelOrder: Order already canceled, returned or sent")

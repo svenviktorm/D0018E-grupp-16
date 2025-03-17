@@ -760,11 +760,11 @@ func orderHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("This should be an attempt to cancel an order")
 			orderID := r.FormValue("orderID")
 			orderIDint, err := strconv.Atoi(orderID)
-			//		if err != nil {
-			//			fmt.Println("Invalid order")
-			//		http.Error(w, "Invalid order", http.StatusBadRequest)
-			//		return
-			//}
+			if err != nil {
+				fmt.Println("Invalid order")
+				http.Error(w, "Invalid order", http.StatusBadRequest)
+				return
+			}
 			err = cancelOrder(int32(orderIDint), user)
 			if err != nil {
 				fmt.Println("Failed to cancel order(CANCEL ORDER): ", err)
